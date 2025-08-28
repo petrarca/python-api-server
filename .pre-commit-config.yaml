@@ -1,0 +1,20 @@
+repos:
+  - repo: local
+    hooks:
+      # API server hooks
+      - id: api-server-commit-fct
+        name: API server format, check, and test
+        entry: task fct
+        language: system
+        pass_filenames: false
+        files: ^(src|tests)/.*\.py$
+        always_run: false
+
+      # Pre-push hooks
+      - id: api-server-push-fct
+        name: API server format, check, and test
+        entry: task fct
+        language: system
+        pass_filenames: false
+        files: ^(src|tests)/.*\.py$
+        stages: [pre-push]
