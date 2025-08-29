@@ -14,13 +14,27 @@ Starter project that demonstrates backend API-server best practices. It exposes 
 
 ## Technology Stack
 
+### Core
 - **Language**: Python 3.13+
-- **Framework**: FastAPI
-- **CLI**: Typer
-- **Package Manager**: uv
+- **Web Framework**: FastAPI
+- **GraphQL**: Strawberry GraphQL (with FastAPI integration)
+- **ORM**: SQLModel (SQLAlchemy-based)
+- **Database**: PostgreSQL (via psycopg)
+- **Migration**: Alembic
+
+### Development Tools
+- **Package Manager**: uv (faster alternative to pip)
+- **CLI Framework**: Typer
 - **Linting & Formatting**: ruff
-- **Database**: PostgreSQL (SQLAlchemy/SQLModel)
-- **Documentation**: OpenAPI (Swagger), ReDoc, and GraphiQL
+- **Testing**: pytest
+- **Environment**: python-dotenv
+- **Logging**: loguru
+- **Task Runner**: Taskfile (Go Task)
+
+### Documentation
+- **API Docs**: OpenAPI (Swagger UI), ReDoc
+- **GraphQL UI**: GraphiQL
+- **Templates**: Jinja2
 
 ## Project Structure
 
@@ -35,8 +49,9 @@ python-api-server/
 │       │   └── version.py          # /version endpoint
 │       ├── graphql/                # GraphQL schema and router
 │       │   ├── graphql_router.py   # /graphql with GraphiQL
-│       │   ├── context.py
-│       │   └── schema.py
+│       │   ├── context.py         # GraphQL context and dependencies
+│       │   ├── schema.py          # GraphQL schema definitions (queries, mutations)
+│       │   └── types.py           # GraphQL type definitions (Strawberry models)
 │       ├── models/                 # Data models (SQLModel)
 │       ├── services/               # Business logic and services
 │       ├── templates/              # HTML templates (index)
@@ -304,6 +319,55 @@ The Dockerfile configures the following:
   - `API_SERVER_HOST=0.0.0.0`
   - `API_SERVER_LOG_LEVEL=INFO`
 - Runs the application with the command: `api-server --host=0.0.0.0 --port=8080 --no-reload`
+
+## Adapting This Template For Your Project
+
+This template is designed to be easily adapted for your own projects. Here's how to customize it for your needs:
+
+### Step-by-Step Guide
+
+Let's say you want to rename the project to `my_server`:
+
+1. **Rename the source directory**:
+   ```bash
+   # Rename the main package directory
+   mv src/api_server src/my_server
+   ```
+
+2. **Replace all occurrences of 'api_server' with 'my_server'**:
+   - Important: This is case sensitive!
+   - Use your IDE's "Replace in Files" feature (in VS Code: Ctrl+Shift+H or Cmd+Shift+H)
+   - Search for `api_server` and replace with `my_server` across all files
+   - Make sure to update:
+     - Python imports
+     - Environment variable prefixes
+     - Package names in pyproject.toml
+     - References in Taskfile.yml
+     - Database connection strings
+     - Docker configuration
+
+3. **Test if everything is still working**:
+   ```bash
+   # Run format, check, and tests to verify the project is still functional
+   task fct
+   
+   # Test database migrations
+   task db:setup
+   ```
+
+4. **Replace example code with your implementations**:
+   - Replace the example models in `src/my_server/models/`
+   - Update services in `src/my_server/services/`
+   - Modify GraphQL schema in `src/my_server/graphql/`
+   - Add your API endpoints to `src/my_server/api/`
+   - Update database migrations as needed
+
+### Tips for a Smooth Transition
+
+- After renaming, check your `.env` file and update any environment variable prefixes
+- Update the console script name in pyproject.toml if you want to change the CLI command
+- Remember to regenerate database migrations if you change the models
+- Update tests to reflect your new models and business logic
 
 ## License
 
