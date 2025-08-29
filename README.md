@@ -297,15 +297,38 @@ A simple health check endpoint is available at:
 
 ### Docker Deployment
 
-The backend server can be containerized using Docker:
+The backend server can be containerized using Docker with the provided utility scripts:
 
 ```bash
 # Build the Docker image
-docker build -t api-server .
+./scripts/docker-rebuild.sh
 
 # Run the container
-docker run -d -p 8080:8080 --name api-server api-server
+./scripts/docker-run.sh
+
+# Stop the container
+./scripts/docker-stop.sh
 ```
+
+These scripts provide several advantages over direct Docker commands:
+
+- **Automatic environment variable resolution**: Variables are automatically resolved from your environment or `.env` files
+- **Automatic port mapping**: Exposed ports from the Dockerfile are automatically mapped
+- **Container name resolution**: Container names are automatically extracted from the Dockerfile
+- **Custom environment files**: Use `--dot-env` option to specify custom environment files (e.g., `--dot-env .env.docker`)
+
+```bash
+# Run with a custom environment file
+./scripts/docker-run.sh --dot-env .env.docker
+
+# Show the command without executing it
+./scripts/docker-run.sh --no-exec
+
+# Pass additional arguments to docker run
+./scripts/docker-run.sh -- -v /local/path:/container/path --restart always
+```
+
+**Important**: When running in Docker, use `host.docker.internal` as the database host in your `.env.docker` file to connect to services running on your host machine.
 
 Once running, you can access:
 - API: http://localhost:8080
@@ -318,6 +341,8 @@ The Dockerfile configures the following:
 - Sets environment variables:
   - `API_SERVER_HOST=0.0.0.0`
   - `API_SERVER_LOG_LEVEL=INFO`
+- Required environment variables that must be set:
+  - `API_SERVER_DATABASE_URL` (can be set in `.env` file)
 - Runs the application with the command: `api-server --host=0.0.0.0 --port=8080 --no-reload`
 
 ## Adapting This Template For Your Project

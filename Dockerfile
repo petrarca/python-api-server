@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 LABEL org.opencontainers.image.title="api-server-template"
 #LABEL org.opencontainers.image.version="latest"
