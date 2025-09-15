@@ -12,13 +12,7 @@ from functools import lru_cache
 from typing import Literal
 
 from pydantic import Field
-
-try:  # pydantic-settings is a separate package in Pydantic v2
-    from pydantic_settings import BaseSettings, SettingsConfigDict
-except ImportError:  # pragma: no cover - fallback for older Pydantic versions
-    from pydantic import BaseSettings  # type: ignore
-
-    SettingsConfigDict = dict  # type: ignore
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
