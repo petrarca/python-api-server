@@ -1,6 +1,11 @@
-"""Database configuration and connection setup."""
+"""Database configuration and connection setup.
 
-import os
+Refactored to lazily create the SQLModel engine after application settings
+have been loaded / possibly overridden by CLI flags. This prevents premature
+failure on import when `API_SERVER_DATABASE_URL` is not yet set or will be
+provided via command line.
+"""
+
 from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
@@ -8,39 +13,44 @@ from typing import Any
 from fastapi import HTTPException, status
 from loguru import logger
 from sqlmodel import Session, create_engine, text
-from tenacity import (
-    before_sleep_log,
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-# Get required database connection info from environment
-DATABASE_URL = os.getenv("API_SERVER_DATABASE_URL")
-if not DATABASE_URL:
-    raise ValueError("API_SERVER_DATABASE_URL environment variable is required")
+from api_server.settings import get_settings
 
-# Enable SQL echo if API_SERVER_SQL_LOG is set
-SQL_LOG_STR = os.getenv("API_SERVER_SQL_LOG", "False")
-SQL_LOG = SQL_LOG_STR.lower() in ("true", "1", "yes")
-logger.info(f"SQL echo is {'enabled' if SQL_LOG else 'disabled'}")
+_engine = None  # type: ignore[var-annotated]
 
-connect_args = {
-    "connect_timeout": 10,  # Connection timeout in seconds
-}
 
-# Create engine with a small pool size that can be fully closed
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,  # Verify connections before use
-    pool_recycle=3600,  # Recycle connections after an hour
-    pool_size=5,  # Keep pool small
-    max_overflow=10,  # Allow some overflow
-    pool_timeout=30,  # Timeout for getting a connection from pool
-    echo=SQL_LOG,  # Log SQL
-    connect_args=connect_args,
-)
+def _build_engine():  # type: ignore[return-value]
+    """Create and return a new engine from current settings.
+
+    Raises:
+        ValueError: if database URL not configured.
+    """
+    settings = get_settings()
+    database_url = settings.database_url
+    if not database_url:
+        raise ValueError("Database URL missing: provide API_SERVER_DATABASE_URL env or --database-url CLI argument")
+    connect_args = {"connect_timeout": 10}
+    engine_local = create_engine(
+        database_url,
+        pool_pre_ping=True,
+        pool_recycle=3600,
+        pool_size=5,
+        max_overflow=10,
+        pool_timeout=30,
+        echo=settings.sql_log,
+        connect_args=connect_args,
+    )
+    logger.info(f"SQL echo is {'enabled' if settings.sql_log else 'disabled'}")
+    return engine_local
+
+
+def get_engine():  # type: ignore[return-value]
+    """Return a singleton engine instance, creating it lazily."""
+    global _engine
+    if _engine is None:
+        _engine = _build_engine()
+    return _engine
 
 
 def init_db() -> None:
@@ -50,9 +60,12 @@ def init_db() -> None:
 
 
 def dispose_db() -> None:
-    """Dispose of the database engine."""
-    logger.info("Closing database connections")
-    engine.dispose()
+    """Dispose of the database engine if it was created."""
+    global _engine
+    if _engine is not None:
+        logger.info("Closing database connections")
+        _engine.dispose()
+        _engine = None
 
 
 # Implement retry logic for database connections
@@ -72,22 +85,21 @@ def get_db_session_with_retry() -> Generator[Session, None, None]:
     thanks to FastAPI's dependency injection system and the context manager.
     """
     try:
-        session = Session(engine)
+        session = Session(get_engine())
         session_id = id(session)
         try:
             # Test connection
             session.exec(text("SELECT 1"))
             logger.trace(f"Database connection successful for session {session_id}")
             yield session
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Error during database session {session_id}: {e}")
             raise
         finally:
             session.close()
             logger.trace(f"Database session {session_id} closed and resources released")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error(f"Failed to connect to database: {e}")
-        # If we've exhausted retries, reraise
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database connection failed, please try again later",

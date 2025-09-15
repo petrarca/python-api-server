@@ -83,5 +83,11 @@ def test_direct_instantiation_with_overrides(override: dict[str, Any], expected:
 def test_model_dump_contains_all_core_fields():
     s = Settings()
     data = s.model_dump()
-    for field in ["host", "port", "log_level", "sql_log", "reload"]:
+    for field in ["host", "port", "log_level", "sql_log", "reload", "database_url"]:
         assert field in data
+
+
+def test_database_url_override(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("API_SERVER_DATABASE_URL", "postgresql+psycopg://u:p@h/db")
+    s = Settings()
+    assert s.database_url == "postgresql+psycopg://u:p@h/db"

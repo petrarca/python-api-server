@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     log_level: Literal["TRACE", "DEBUG", "INFO", "WARNING", "ERROR"] = Field(default="INFO", description="Application log level")
     sql_log: bool = Field(default=False, description="Enable SQL query logging")
     reload: bool = Field(default=True, description="Enable auto-reload in development")
+    database_url: str | None = Field(
+        default=None,
+        description="Primary database connection string (postgresql+psycopg://...)",
+    )
 
     # Additional future settings (DB URL etc.) can be appended here.
 

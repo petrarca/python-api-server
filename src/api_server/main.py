@@ -14,6 +14,7 @@ PORT_OPTION = typer.Option(None, help="Port to bind the server to (overrides API
 RELOAD_OPTION = typer.Option(None, help="Enable/disable auto-reload (overrides API_SERVER_RELOAD)")
 LOG_LEVEL_OPTION = typer.Option(None, help="Log level (overrides API_SERVER_LOG_LEVEL)", metavar="<level>", case_sensitive=False)
 SQL_LOG_OPTION = typer.Option(None, help="Enable/disable SQL query logging (overrides API_SERVER_SQL_LOG)")
+DATABASE_URL_OPTION = typer.Option(None, help="Database URL (overrides API_SERVER_DATABASE_URL)", metavar="<dsn>")
 
 
 def _override_settings(
@@ -23,6 +24,7 @@ def _override_settings(
     reload: bool | None,
     log_level: str | None,
     sql_log: bool | None,
+    database_url: str | None,
 ) -> Settings:
     """Return a new Settings object with CLI overrides applied."""
     data = base.model_dump()
@@ -36,6 +38,8 @@ def _override_settings(
         data["log_level"] = log_level.upper()
     if sql_log is not None:
         data["sql_log"] = sql_log
+    if database_url is not None:
+        data["database_url"] = database_url
     return Settings(**data)
 
 
@@ -46,14 +50,19 @@ def run(
     reload: bool = RELOAD_OPTION,
     log_level: str = LOG_LEVEL_OPTION,
     sql_log: bool = SQL_LOG_OPTION,
+    database_url: str = DATABASE_URL_OPTION,
 ) -> None:
     """Run the application using uvicorn server with centralized settings."""
     base_settings = get_settings()
-    settings = _override_settings(base_settings, host, port, reload, log_level, sql_log)
+    settings = _override_settings(base_settings, host, port, reload, log_level, sql_log, database_url)
 
     logger.info(f"Starting API server at http://{settings.host}:{settings.port}")
     logger.info(f"Log level: {settings.log_level}")
     logger.info(f"SQL logging: {'enabled' if settings.sql_log else 'disabled'}")
+    if settings.database_url:
+        logger.info("Database URL configured (value hidden)")
+    else:
+        logger.warning("No database URL configured (API_SERVER_DATABASE_URL)")
 
     if settings.log_level in {"DEBUG", "TRACE"}:
         # Safe dump (no secrets yet). If secrets added later, exclude them.
@@ -69,7 +78,7 @@ def run(
         host=settings.host,
         port=settings.port,
         reload=settings.reload,
-        log_level=settings.log_level.lower(),
+        log_level=str(settings.log_level).lower(),
         log_config=log_config,
     )
 
