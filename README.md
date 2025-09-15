@@ -2,7 +2,7 @@
 
 ## Overview
 
-Starter project that demonstrates backend API-server best practices. It exposes functionality as both REST and GraphQL endpoints, uses a clear layered architecture, provides example database models with SQLModel, and shows how to re-use model definitions across API, services, and persistence layers. Comes with uv-based env/deps, Alembic migrations, Ruff, and pytest.
+Starter project demonstrating backend API-server best practices: unified REST & GraphQL endpoints, layered architecture, shared SQLModel models, and a modern tooling stack (uv, Alembic, Ruff, pytest).
 
 ## Current Implementation
 
@@ -91,11 +91,11 @@ task install
 
 ### Development Workflow with Task
 
-Backend uses [Task](https://taskfile.dev/) to provide a unified workflow for common development operations. Task is a task runner that allows you to define and run tasks in a simple YAML format.
+Backend uses [Task](https://taskfile.dev/) as a unified task runner (simple YAML definitions).
 
 #### Git Hooks
 
-This project uses pre-commit hooks to ensure code quality before committing. The hooks run the `task fct` command (format, check, test) to ensure that all code is properly formatted, passes linting checks, and tests before being committed.
+Pre-commit hooks run `task fct` (format, check, test) to enforce style and correctness before commits.
 
 To install the pre-commit hooks:
 
@@ -156,51 +156,101 @@ For development with hot reloading (automatically restarts the server when code 
 task run:dev
 ```
 
-This is the recommended way to run the backend during development as it will automatically reload when you make changes to the code.
+Recommended for development: automatic reload on code changes.
 
 ### Configuration
 
-The server can be configured using environment variables or command-line arguments. Command-line arguments take precedence over environment variables.
+Runtime configuration is centralized in a Pydantic Settings model (`api_server.config.Settings`).
+
+Resolution order (highest precedence last):
+1. Default values embedded in `Settings`
+2. `.env` file (if present) – loaded automatically
+3. Environment variables with prefix `API_SERVER_`
+4. CLI overrides (Typer arguments) passed to `python -m api_server.main` or the `api-server` entrypoint
+
+Access the settings instance anywhere:
+
+```python
+from api_server.config import get_settings
+
+settings = get_settings()
+print(settings.host, settings.port)
+```
+
+Inside FastAPI routes you can depend on it:
+
+```python
+from fastapi import Depends
+from api_server.config import get_settings, Settings
+
+@app.get("/info")
+def info(settings: Settings = Depends(get_settings)):
+   return {"host": settings.host, "port": settings.port}
+```
+
+When log level is `DEBUG` or `TRACE`, settings are logged once at startup (non-secret fields).
 
 #### Environment Variables
 
-**Required Environment Variables:**
+Current `Settings` fields (extend as needed):
 
-- `API_SERVER_DATABASE_URL`: Database connection string (required) - The application will not start without this variable set. Example: `postgresql+psycopg://username:password@hostname:port/database`
+| Field | Env Var | Default | Description |
+|-------|---------|---------|-------------|
+| `host` | `API_SERVER_HOST` | `0.0.0.0` | Interface to bind |
+| `port` | `API_SERVER_PORT` | `8080` | Port to listen on |
+| `log_level` | `API_SERVER_LOG_LEVEL` | `INFO` | TRACE / DEBUG / INFO / WARNING / ERROR |
+| `sql_log` | `API_SERVER_SQL_LOG` | `False` | Enable SQLAlchemy SQL echo logging |
+| `reload` | `API_SERVER_RELOAD` | `True` | Auto-reload in dev (CLI override supported) |
 
-**Optional Environment Variables:**
+Add database URL / secrets by appending fields to `Settings`:
 
-- `API_SERVER_HOST`: Host to bind the server to (default: "0.0.0.0")
-- `API_SERVER_PORT`: Port to bind the server to (default: 8080)
-- `API_SERVER_LOG_LEVEL`: Logging level (default: "INFO") - Valid values: TRACE, DEBUG, INFO, WARNING, ERROR
-- `API_SERVER_SQL_LOG`: Enable SQL query logging (default: "False") - Valid values: true, 1, yes (case-insensitive)
+```python
+class Settings(BaseSettings):
+   database_url: str = Field(..., description="Primary database DSN")  # required
+   # secret_token: SecretStr | None = None  # example secret
+```
 
-**Example .env file:**
+Then export `API_SERVER_DATABASE_URL` (and optionally add to `.env`). Pydantic enforces required fields.
+
+**Example `.env` file:**
 
 ```
-# Server Configuration
 API_SERVER_HOST=0.0.0.0
 API_SERVER_PORT=8080
-
-# Logging Configuration
-API_SERVER_LOG_LEVEL=INFO
+API_SERVER_LOG_LEVEL=DEBUG
 API_SERVER_SQL_LOG=true
-
-# Database Configuration (REQUIRED)
 API_SERVER_DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5432/postgres
 ```
 
-You can set these variables in a `.env` file in the project root directory. An example `.env` file is provided as `.env.example`.
+Variables can live in `.env` (example: `.env.example`).
 
 #### Command-line Arguments
 
-- `--host`: Host to bind the server to (overrides API_SERVER_HOST)
-- `--port`: Port to bind the server to (overrides API_SERVER_PORT)
-- `--log-level`: Logging level (overrides API_SERVER_LOG_LEVEL)
-- `--reload`: Enable auto-reload (default: enabled)
-- `--no-reload`: Disable auto-reload
-- `--sql-log`: Enable SQL query logging (overrides API_SERVER_SQL_LOG)
-- `--no-sql-log`: Disable SQL query logging
+CLI arguments override environment-driven settings for that invocation:
+
+| Argument | Effect |
+|----------|--------|
+| `--host` / `--port` | Override bind interface/port |
+| `--log-level` | Override `log_level` (case-insensitive) |
+| `--reload` / `--no-reload` | Force enable/disable auto-reload |
+| `--sql-log` / `--no-sql-log` | Toggle SQL logging |
+
+Examples:
+
+```bash
+api-server --host=127.0.0.1 --port=9000 --log-level=DEBUG --sql-log
+python -m api_server.main --no-reload --log-level=WARNING
+```
+
+#### Redacting Sensitive Fields (Optional)
+
+If you add secrets (e.g., `SecretStr`), avoid dumping them verbatim:
+
+```python
+if settings.log_level in {"DEBUG", "TRACE"}:
+   safe = settings.model_dump(exclude={"secret_token"})
+   logger.debug(f"Effective settings: {safe}")
+```
 
 ### Running the Server
 
@@ -221,7 +271,7 @@ python -m api_server.main --no-reload
 api-server --host=127.0.0.1 --port=8080 --log-level=INFO
 ```
 
-You can also use the Task runner:
+Or run via Task:
 
 ```bash
 # Run with default settings
@@ -233,7 +283,7 @@ task run -- --port=8080
 
 ## Database Setup and Migration
 
-The application uses Alembic for database migrations. The following commands are available for database management:
+Alembic handles database migrations:
 
 ### Setting Up a New Database
 
@@ -288,7 +338,7 @@ API documentation is available at:
 
 ## Health Check Endpoint
 
-A simple health check endpoint is available at:
+Health-related endpoints:
 - http://localhost:8080/health-check
 - Basic ping: http://localhost:8080/ping
 - Version: http://localhost:8080/version
@@ -310,7 +360,7 @@ The backend server can be containerized using Docker with the provided utility s
 ./scripts/docker-stop.sh
 ```
 
-These scripts provide several advantages over direct Docker commands:
+Scripts advantages over raw Docker commands:
 
 - **Automatic environment variable resolution**: Variables are automatically resolved from your environment or `.env` files
 - **Automatic port mapping**: Exposed ports from the Dockerfile are automatically mapped
@@ -336,7 +386,7 @@ Once running, you can access:
 - ReDoc: http://localhost:8080/redoc
 - Health Check: http://localhost:8080/health-check
 
-The Dockerfile configures the following:
+Dockerfile highlights:
 - Exposes port 8080 for the FastAPI application
 - Sets environment variables:
   - `API_SERVER_HOST=0.0.0.0`
@@ -371,7 +421,10 @@ Let's say you want to rename the project to `my_server`:
      - Database connection strings
      - Docker configuration
 
-3. **Test if everything is still working**:
+3. **Update the configuration prefix (optional)**:
+   If you want a different env prefix (e.g. `MY_SERVER_`), edit `env_prefix` in `Settings.model_config` inside `config.py`.
+
+4. **Test if everything is still working**:
    ```bash
    # Run format, check, and tests to verify the project is still functional
    task fct
@@ -380,7 +433,7 @@ Let's say you want to rename the project to `my_server`:
    task db:setup
    ```
 
-4. **Replace example code with your implementations**:
+5. **Replace example code with your implementations**:
    - Replace the example models in `src/my_server/models/`
    - Update services in `src/my_server/services/`
    - Modify GraphQL schema in `src/my_server/graphql/`
@@ -389,10 +442,12 @@ Let's say you want to rename the project to `my_server`:
 
 ### Tips for a Smooth Transition
 
-- After renaming, check your `.env` file and update any environment variable prefixes
+- After renaming, update `.env` to use the new prefix if changed
+- Adjust `Settings` to include project-specific fields early (keeps config discoverable)
 - Update the console script name in pyproject.toml if you want to change the CLI command
-- Remember to regenerate database migrations if you change the models
-- Update tests to reflect your new models and business logic
+- Regenerate database migrations if you change the models
+- Add secrets as `SecretStr` fields to automatically prevent accidental plain-text printing
+- Update or add tests that call `get_settings()` to validate new required fields
 
 ## License
 

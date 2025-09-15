@@ -10,13 +10,20 @@ from sqlmodel import Session, select
 from api_server.models.api_model import AddressInput, AddressResponse
 from api_server.models.db_model import Address as AddressModel
 from api_server.models.db_model import Patient as PatientModel
+from api_server.settings import Settings, get_settings
 from api_server.utils.model_converter import to_response_model
 
 logger = logging.getLogger(__name__)
 
 
 class AddressService:
-    """Service for address operations."""
+    """Service for address operations.
+
+    Settings can be used for feature flags or limits (placeholder for future).
+    """
+
+    def __init__(self, settings: Settings | None = None):
+        self.settings = settings or get_settings()
 
     def get_addresses(self, session: Session, patient_id: UUID) -> list[AddressResponse]:
         """Get all addresses for a patient."""
@@ -123,12 +130,5 @@ class AddressService:
 
 @lru_cache
 def get_address_service() -> AddressService:
-    """Get the address service singleton.
-
-    The @lru_cache decorator ensures this functions as a singleton,
-    returning the same instance for all calls.
-
-    Returns:
-        AddressService: The singleton address service instance
-    """
-    return AddressService()
+    """Get the address service singleton using global settings."""
+    return AddressService(get_settings())

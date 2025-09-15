@@ -21,6 +21,7 @@ from api_server.services.address_service import AddressService, get_address_serv
 from api_server.services.health_check_service import HealthCheckService, get_health_check_service
 from api_server.services.patient_service import PatientService, get_patient_service
 from api_server.services.registry import get_service_registry
+from api_server.settings import Settings, get_settings
 from api_server.utils.version import get_version
 
 # Constants for log messages
@@ -31,6 +32,10 @@ FEATURES_MAY_NOT_WORK_WARNING = "Server will continue to run but some features m
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Handle startup and shutdown events for the FastAPI application."""
+    # Load settings and attach to app state (so dependencies can access)
+    settings = get_settings()
+    _app.state.settings = settings  # type: ignore[attr-defined]
+
     # Configure logging on startup
     setup_logging()
     setup_sqlalchemy_logging()
@@ -164,3 +169,8 @@ async def read_root(request: Request):
         "build_timestamp": build_timestamp,
     }
     return templates.TemplateResponse("index.html", context)
+
+
+def get_app_settings() -> Settings:
+    """FastAPI dependency helper returning current app Settings."""
+    return get_settings()
