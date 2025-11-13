@@ -22,7 +22,9 @@ class PatientService:
         """Initialize the patient service."""
         self.address_service = get_address_service()
 
-    def get_patient_by_id(self, session: Session, id_: UUID | None = None, patient_id: str | None = None) -> PatientResponse | None:
+    def get_patient_by_id(
+        self, session: Session, id_: UUID | None = None, patient_id: str | None = None
+    ) -> PatientResponse | None:
         """Get a patient by ID.
 
         Args:

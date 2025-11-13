@@ -119,3 +119,9 @@ tasks:
     deps: [setup]
     cmds:
       - .venv/bin/pre-commit run --all-files
+
+  pre-commit:uninstall:
+    desc: Uninstall pre-commit hooks
+    deps: [setup]
+    cmds:
+      - .venv/bin/pre-commit uninstall

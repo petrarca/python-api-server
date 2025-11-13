@@ -4,7 +4,6 @@ import sys
 from logging.config import fileConfig
 
 from alembic import context
-from dotenv import load_dotenv
 from loguru import logger
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
@@ -15,7 +14,7 @@ logger.remove()  # Remove default handler
 logger.add(sys.stderr, level=LOG_LEVEL)  # Add stderr handler with configurable level
 
 # Enable SQL echo if log level is DEBUG or lower
-SQL_ECHO = bool(os.getenv("API_SERVER_LOG_LEVEL", "True"))
+SQL_ECHO = bool(os.getenv("API_SERVER_SQL_ECHO", "True"))
 logger.info(f"SQL echo is {'enabled' if SQL_ECHO else 'disabled'}")
 
 
@@ -37,9 +36,13 @@ class InterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
-load_dotenv()
+from api_server.settings import get_settings  # noqa: E402
 
-from api_server.database import DATABASE_URL  # noqa: E402
+# Get settings instance
+settings = get_settings()
+
+if not settings.database_url:
+    raise ValueError("Database URL not configured. Set API_SERVER_DATABASE_URL in .env or as environment variable.")
 
 # Import all models to ensure they're registered with SQLModel metadata
 from api_server.models import db_model  # noqa: F401, E402
@@ -49,7 +52,7 @@ from api_server.models import db_model  # noqa: F401, E402
 config = context.config
 
 # Override sqlalchemy.url in alembic.ini with the URL from our application
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Interpret the config file for Python logging,
 # but redirect everything through loguru

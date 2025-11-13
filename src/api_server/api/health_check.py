@@ -1,85 +1,111 @@
-"""Health check API endpoints."""
+"""Health Check API - Service health and database connectivity status.
 
-from typing import Any
+This module provides the health check endpoint that:
+- Verifies API service is running
+- Tests database connectivity
+- Reports component status
+
+Used for monitoring, load balancers, and operational health checks.
+"""
 
 from fastapi import APIRouter, Depends
 from loguru import logger
-from pydantic import BaseModel, Field
 
-from api_server.self_check import ServerState
-from api_server.services.health_check_service import HealthCheckService, get_health_check_service
-from api_server.utils.version import VersionInfo
+from api_server.services.health_check_service import HealthCheckResult, HealthCheckService, get_health_check_service
 
 router = APIRouter(tags=["System"])
-
-
-class CheckResultResponse(BaseModel):
-    """Check result response model."""
-
-    check: str = ""
-    success: bool
-    message: str
-    details: dict[str, Any]
-
-
-class HealthResponse(BaseModel):
-    """Health check response model."""
-
-    status: str
-    version_info: VersionInfo
-    server_state: ServerState
-    checks: list[CheckResultResponse] | None = Field(alias="checks", default=None)
-
-    class Config:
-        """Pydantic model configuration."""
-
-        json_schema_extra = {
-            "example": {
-                "status": "ok",
-                "version_info": {
-                    "version": "0.1.0",
-                    "full_version": "0.1.0.post11+ga524f7b.dirty.2025-03-23T21:41:10Z",
-                    "post_count": "11",
-                    "git_commit": "a524f7b",
-                    "is_dirty": True,
-                    "build_timestamp": "2025-03-23T21:41:10Z",
-                },
-                "server_state": "operational",
-                "checks": [
-                    {
-                        "check": "database_connection",
-                        "success": True,
-                        "message": "Database connection is healthy",
-                        "details": {"status": "healthy", "connection": "active"},
-                    }
-                ],
-            }
-        }
 
 
 # Define the dependencies as module-level variables
 health_service_dependency = Depends(get_health_check_service)
 
 
-@router.get("/health-check", response_model=HealthResponse)
-async def health_check(health_service: HealthCheckService = health_service_dependency) -> HealthResponse:
+@router.get("/health-check", response_model=HealthCheckResult)
+async def health_check(
+    health_service: HealthCheckService = health_service_dependency,
+) -> HealthCheckResult:
     """
-    Health check endpoint.
+    Get the last cached health check results (fast, read-only).
+
+    Returns the results from the most recent health check execution without
+    running the checks again. This is suitable for:
+    - Monitoring systems that poll frequently
+    - Load balancer health checks
+    - Dashboard displays
+
+    Args:
+        health_service: Health check service (injected)
 
     Returns:
-        HealthResponse: The health status of the API and database connection.
+        HealthCheckResult object containing:
+        - status: Overall health status ("ok" or "error")
+        - server_state: Current server state
+        - active_profiles: List of enabled API profiles (REST, GraphQL, MCP)
+        - version_info: Server version information
+        - checks: List of individual check results
+
+    Example:
+        GET /health-check
+        Returns: {
+            "status": "ok",
+            "server_state": "operational",
+            "active_profiles": ["GraphQL", "REST"],
+            "version_info": {...},
+            "checks": [...]
+        }
+
+    Note:
+        - Returns HTTP 200 even if unhealthy (status in response body)
+        - Returns cached results from last execution (fast)
+        - To trigger fresh execution, use POST /health-check
     """
-    logger.debug("Health check requested")
+    logger.debug("Health check requested (cached results)")
 
-    # Let the service handle all health checks, including database connection
-    health_data = health_service.perform_health_check()
+    # Return last cached results
+    return health_service.get_check_results()
 
-    # Convert the service response to the API response model
-    response = HealthResponse(
-        status=health_data["status"],
-        version_info=health_data["version_info"],
-        server_state=health_data["server_state"],
-        checks=[CheckResultResponse(**check) for check in health_data["checks"]],
-    )
 
-    return response
+@router.post("/health-check", response_model=HealthCheckResult)
+async def trigger_health_check(
+    health_service: HealthCheckService = health_service_dependency,
+) -> HealthCheckResult:
+    """
+    Execute health checks and return fresh results.
+
+    Triggers execution of the complete readiness pipeline:
+    - Database initialization and health
+    - Alembic migration status
+    - Database version check
+
+    Use this endpoint when you need current state, such as:
+    - After running database migrations
+    - Manual health verification
+    - Troubleshooting issues
+    - Forcing re-check of external dependencies
+
+    Args:
+        health_service: Health check service (injected)
+
+    Returns:
+        HealthCheckResult object with fresh check results
+
+    Example:
+        POST /health-check
+        Returns: {
+            "status": "ok",
+            "server_state": "operational",
+            "active_profiles": ["GraphQL", "REST"],
+            "version_info": {...},
+            "checks": [...]
+        }
+
+    Note:
+        - Executes all health checks (may take longer than GET)
+        - Updates cached results for subsequent GET requests
+        - Checks with run_once=True will return cached results
+        - Checks with run_once=False will execute fresh
+    """
+    logger.info("Health check execution triggered via POST")
+
+    # Execute pipeline and return fresh results
+    return health_service.perform_health_check()

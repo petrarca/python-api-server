@@ -51,7 +51,9 @@ class TestModelBuilder:
 
     def test_exclude_fields(self):
         """Test excluding specific fields."""
-        model = ModelBuilder(SampleBaseModel).with_name("TestExcludeModel").exclude(["age", "is_active", "tags", "metadata"]).build()
+        model = (
+            ModelBuilder(SampleBaseModel).with_name("TestExcludeModel").exclude(["age", "is_active", "tags", "metadata"]).build()
+        )
 
         # Check model has correct fields
         assert "id" in model.model_fields
@@ -136,7 +138,11 @@ class TestModelBuilder:
 
         # Test with all_fields=False
         model_none = (
-            ModelBuilder(SampleBaseModel).with_name("TestNoFieldsModel").with_all_fields(False).override_field("custom_field", str, "custom").build()
+            ModelBuilder(SampleBaseModel)
+            .with_name("TestNoFieldsModel")
+            .with_all_fields(False)
+            .override_field("custom_field", str, "custom")
+            .build()
         )
 
         # Check no fields from base model are included

@@ -1,7 +1,6 @@
 """Logging configuration for the API server."""
 
 import logging
-import os
 import sys
 
 from loguru import logger
@@ -26,16 +25,12 @@ class InterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
-def setup_logging(log_level=None):
+def setup_logging(log_level: str):
     """Configure loguru logging for the entire application.
 
     Args:
-        log_level: Optional log level to use. If None, will be read from API_SERVER_LOG_LEVEL env var.
+        log_level: Log level to use (from settings, which handles env vars and CLI args).
     """
-    # Get log level from environment if not provided
-    if log_level is None:
-        log_level = os.getenv("API_SERVER_LOG_LEVEL", "INFO")
-
     # Ensure log level is uppercase
     log_level = log_level.upper()
 
@@ -59,10 +54,15 @@ def setup_logging(log_level=None):
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
     # Configure all existing loggers to use our handler
-    for name in logging.root.manager.loggerDict:
+    for name in logging.Logger.manager.loggerDict:
         logging_logger = logging.getLogger(name)
         logging_logger.handlers = [InterceptHandler()]
         logging_logger.propagate = False
+
+    # Set third-party library loggers to the same level as the application
+    # This gives consistent behavior - user controls all logging with one setting
+    for noisy_logger in ("httpcore", "httpx", "openai", "urllib3", "asyncio", "api_server"):
+        logging.getLogger(noisy_logger).setLevel(log_level)
 
 
 def setup_sqlalchemy_logging():

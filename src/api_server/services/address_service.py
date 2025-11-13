@@ -107,7 +107,9 @@ class AddressService:
 
             # If this is the primary address, set primary_address_id to None
             if patient:
-                logger.debug(f"Service: delete_address - address {address_id} is the primary address, setting primary_address_id to None")
+                logger.debug(
+                    f"Service: delete_address - address {address_id} is the primary address, setting primary_address_id to None"
+                )
                 patient.primary_address_id = None
                 session.add(patient)
 

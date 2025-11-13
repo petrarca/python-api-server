@@ -10,7 +10,6 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
 
-from fastapi import HTTPException, status
 from loguru import logger
 from sqlmodel import Session, create_engine, text
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -46,11 +45,21 @@ def _build_engine():  # type: ignore[return-value]
 
 
 def get_engine():  # type: ignore[return-value]
-    """Return a singleton engine instance, creating it lazily."""
+    """Return a singleton engine instance, creating it lazily.
+
+    If the engine exists but connections fail, it will be disposed and recreated.
+    This handles cases where the database wasn't ready when the engine was first created.
+    """
     global _engine
     if _engine is None:
         _engine = _build_engine()
     return _engine
+
+
+def is_initialized() -> bool:
+    """Check if database already initialized"""
+    global _engine
+    return _engine is not None
 
 
 def init_db() -> None:
@@ -68,7 +77,6 @@ def dispose_db() -> None:
         _engine = None
 
 
-# Implement retry logic for database connections
 @retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=1, max=10),
@@ -76,39 +84,73 @@ def dispose_db() -> None:
     retry=retry_if_exception_type(Exception),
     before_sleep=before_sleep_log(logger, "DEBUG"),
 )
-@contextmanager
-def get_db_session_with_retry() -> Generator[Session, None, None]:
+def _create_session() -> Session:
+    """Create a database session with retry logic.
+
+    This function handles connection failures by disposing and recreating
+    the engine on each retry attempt. It is separate from the context
+    manager to allow proper retry behavior.
+
+    Returns:
+        Session: A new database session
+
+    Raises:
+        Exception: If all retry attempts fail
     """
-    This function creates a database session with retry logic and yields it to the caller.
-    Will attempt to connect to the database with exponential backoff.
-    The session is automatically closed when the request is complete,
-    thanks to FastAPI's dependency injection system and the context manager.
-    """
+    global _engine
     try:
         session = Session(get_engine())
-        session_id = id(session)
-        try:
-            # Test connection
+        # Test the connection immediately
+        session.execute(text("SELECT 1"))
+        return session
+    except Exception as e:
+        # Connection failed - dispose engine so it can be recreated on retry
+        if _engine is not None:
+            logger.warning("Database connection failed, disposing engine for retry...")
+            _engine.dispose()
+            _engine = None
+        logger.error(f"Failed to create database session: {e}")
+        raise
+
+
+@contextmanager
+def borrow_db_session() -> Generator[Session, None, None]:
+    """Public context manager for ad-hoc database usage.
+
+    Creates a database session with retry logic and yields it to the caller.
+    Will attempt to connect to the database with exponential backoff.
+    If the database is not ready, it will retry up to 5 times.
+
+    Use this function for health checks, utility scripts, or any
+    non-FastAPI context. For FastAPI route handlers, use get_db_session()
+    as a dependency instead.
+
+    Example:
+        from api_server.database import borrow_db_session
+        with borrow_db_session() as session:
             session.exec(text("SELECT 1"))
-            logger.trace(f"Database connection successful for session {session_id}")
-            yield session
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"Error during database session {session_id}: {e}")
-            raise
-        finally:
-            session.close()
-            logger.trace(f"Database session {session_id} closed and resources released")
+    """
+    # Use the retry-wrapped session creation
+    session = _create_session()
+    session_id = id(session)
+
+    try:
+        yield session
     except Exception as e:  # noqa: BLE001
-        logger.error(f"Failed to connect to database: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database connection failed, please try again later",
-        ) from e
+        logger.error(f"Error during database session {session_id}: {e}")
+        raise
+    finally:
+        session.close()
+        logger.trace(f"Database session {session_id} closed and resources released")
 
 
 def get_db_session() -> Session:
-    """Provide a database session for dependency injection."""
-    with get_db_session_with_retry() as session:
+    """FastAPI dependency yielding a database session.
+
+    Usage in route:
+        def endpoint(session: Session = Depends(get_db_session)): ...
+    """
+    with borrow_db_session() as session:
         yield session
 
 

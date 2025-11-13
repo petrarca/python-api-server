@@ -86,7 +86,9 @@ class Mutation:
     """Root mutation type for the GraphQL schema."""
 
     @strawberry.mutation
-    async def update_primary_address(self, info: strawberry.Info, id: strawberry.ID, address_id: strawberry.ID | None) -> strawberry.ID | None:
+    async def update_primary_address(
+        self, info: strawberry.Info, id: strawberry.ID, address_id: strawberry.ID | None
+    ) -> strawberry.ID | None:
         """Update a patient's primary address.
 
         Args:

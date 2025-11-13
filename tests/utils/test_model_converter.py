@@ -151,9 +151,13 @@ def sample_patient():
     )
 
     # Create addresses
-    address1 = MockAddressModel(id=uuid4(), street="123 Main St", city="Anytown", state="CA", zip_code="12345", country="US", patient_id=patient.id)
+    address1 = MockAddressModel(
+        id=uuid4(), street="123 Main St", city="Anytown", state="CA", zip_code="12345", country="US", patient_id=patient.id
+    )
 
-    address2 = MockAddressModel(id=uuid4(), street="456 Oak Ave", city="Somewhere", state="NY", zip_code="67890", country="US", patient_id=patient.id)
+    address2 = MockAddressModel(
+        id=uuid4(), street="456 Oak Ave", city="Somewhere", state="NY", zip_code="67890", country="US", patient_id=patient.id
+    )
 
     # Add addresses to patient
     patient.addresses = [address1, address2]
@@ -172,7 +176,9 @@ def sample_medical_record():
     doctor.specialty = specialty
 
     # Create a medical record with the doctor
-    record = MockMedicalRecordModel(record_type="Examination", description="Annual checkup", patient_id=uuid4(), doctor_id=doctor.id)
+    record = MockMedicalRecordModel(
+        record_type="Examination", description="Annual checkup", patient_id=uuid4(), doctor_id=doctor.id
+    )
     record.doctor = doctor
 
     return record

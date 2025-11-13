@@ -16,17 +16,12 @@ from api_server.api.version import router as version_router
 from api_server.database import dispose_db, init_db
 from api_server.graphql.graphql_router import create_graphql_router
 from api_server.logging import setup_logging, setup_sqlalchemy_logging
-from api_server.self_check import server_self_check
 from api_server.services.address_service import AddressService, get_address_service
 from api_server.services.health_check_service import HealthCheckService, get_health_check_service
 from api_server.services.patient_service import PatientService, get_patient_service
 from api_server.services.registry import get_service_registry
 from api_server.settings import Settings, get_settings
 from api_server.utils.version import get_version
-
-# Constants for log messages
-DB_DEPENDENT_FEATURES_WARNING = "Application will continue to start, but database-dependent features may not work"
-FEATURES_MAY_NOT_WORK_WARNING = "Server will continue to run but some features may not function correctly"
 
 
 @asynccontextmanager
@@ -37,7 +32,7 @@ async def lifespan(_app: FastAPI):
     _app.state.settings = settings  # type: ignore[attr-defined]
 
     # Configure logging on startup
-    setup_logging()
+    setup_logging(log_level=settings.log_level)
     setup_sqlalchemy_logging()
 
     # Initialize database
@@ -46,7 +41,7 @@ async def lifespan(_app: FastAPI):
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.warning(f"Database initialization failed: {str(e)}")
-        logger.warning(DB_DEPENDENT_FEATURES_WARNING)
+        logger.warning("Application will continue to start, but database-dependent features may not work")
 
     # Register services in the service registry
     logger.info("Registering services in the service registry")
@@ -59,8 +54,8 @@ async def lifespan(_app: FastAPI):
     # Log startup message
     logger.info("API server starting up")
 
-    # Run server self-checks
-    perform_startup_health_checks()
+    # Run server readiness checks, including initializing database
+    get_health_check_service().perform_health_check()
 
     yield
 
@@ -69,44 +64,6 @@ async def lifespan(_app: FastAPI):
 
     # Dispose database connection(s) and engine
     dispose_db()
-
-
-def perform_startup_health_checks():
-    """Perform health checks during startup but continue regardless of results."""
-    try:
-        # Use the HealthCheckService to perform health checks
-        health_service = get_health_check_service()
-        health_data = health_service.perform_health_check()
-        # Log overall status
-        _log_health_check_status(health_data)
-    except Exception as e:
-        logger.warning(f"Could not perform health checks during startup: {str(e)}")
-        logger.warning(FEATURES_MAY_NOT_WORK_WARNING)
-
-
-def _log_health_check_status(health_data):
-    """Log health check status and details."""
-    if health_data["status"] == "ok":
-        logger.info("Startup health checks passed")
-        return
-    # Log failures
-    logger.warning("Some startup health checks failed")
-    # Log details of failed checks
-    for check in health_data["checks"]:
-        if not check["success"]:
-            _log_failed_check(check)
-
-
-def _log_failed_check(check):
-    """Log details of a failed health check."""
-    logger.warning(f"Check '{check['check']}' failed: {check['message']}")
-    if "details" in check and check["details"]:
-        logger.warning(f"Details: {check['details']}")
-    # Add specific warnings for certain checks
-    if check["check"] == "database_connection":
-        logger.warning(DB_DEPENDENT_FEATURES_WARNING)
-    else:
-        logger.warning(FEATURES_MAY_NOT_WORK_WARNING)
 
 
 app = FastAPI(
@@ -155,7 +112,8 @@ app.include_router(graphql_router, prefix="/graphql")
 async def read_root(request: Request):
     """Serve the index template at root."""
     # Get the current server state
-    server_state = server_self_check.get_state().value
+    health_service = get_health_check_service()
+    server_state = health_service.get_server_state().value
 
     # Extract build timestamp from version if available
     version_info = get_version()

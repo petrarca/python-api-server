@@ -92,7 +92,9 @@ class ServerSelfCheck:
         all_checks_passed = True
 
         # Check 1: Database connection
-        db_check_result = self._run_and_record_check_without_stopping(session, self.check_database_connection, "Database connection check failed")
+        db_check_result = self._run_and_record_check_without_stopping(
+            session, self.check_database_connection, "Database connection check failed"
+        )
         if not db_check_result:
             # If database check fails, we can't run the other checks that depend on database access
             # But we don't want to stop the application from starting
@@ -100,12 +102,16 @@ class ServerSelfCheck:
             return False
 
         # Check 2: Alembic setup
-        alembic_check_result = self._run_and_record_check_without_stopping(session, self.check_alembic_setup, "Alembic setup check failed")
+        alembic_check_result = self._run_and_record_check_without_stopping(
+            session, self.check_alembic_setup, "Alembic setup check failed"
+        )
         if not alembic_check_result:
             all_checks_passed = False
 
         # Check 3: Database version
-        db_version_check_result = self._run_and_record_check_without_stopping(session, self.check_database_version, "Database version check failed")
+        db_version_check_result = self._run_and_record_check_without_stopping(
+            session, self.check_database_version, "Database version check failed"
+        )
         if not db_version_check_result:
             all_checks_passed = False
 
@@ -182,7 +188,9 @@ class ServerSelfCheck:
         try:
             db_health = is_healthy(session)
             if db_health["status"] == "healthy":
-                return CheckResult(success=True, message="Database connection is healthy", details=db_health, check="database_connection")
+                return CheckResult(
+                    success=True, message="Database connection is healthy", details=db_health, check="database_connection"
+                )
             else:
                 return CheckResult(
                     success=False,
@@ -193,7 +201,10 @@ class ServerSelfCheck:
         except Exception as e:
             logger.error(f"Error checking database connection: {str(e)}")
             return CheckResult(
-                success=False, message=f"Error checking database connection: {str(e)}", details={"error": str(e)}, check="database_connection"
+                success=False,
+                message=f"Error checking database connection: {str(e)}",
+                details={"error": str(e)},
+                check="database_connection",
             )
 
     def check_alembic_setup(self, session: Session) -> CheckResult:
@@ -239,7 +250,9 @@ class ServerSelfCheck:
                 )
         except Exception as e:
             logger.error(f"Error checking alembic setup: {str(e)}")
-            return CheckResult(success=False, message=f"Error checking alembic setup: {str(e)}", details={"error": str(e)}, check="alembic_setup")
+            return CheckResult(
+                success=False, message=f"Error checking alembic setup: {str(e)}", details={"error": str(e)}, check="alembic_setup"
+            )
 
     def check_database_version(self, session: Session) -> CheckResult:
         """Check if the database version matches the expected version.
@@ -285,7 +298,12 @@ class ServerSelfCheck:
                 )
         except Exception as e:
             logger.error(f"Error checking database version: {e}")
-            return CheckResult(success=False, message=f"Error checking database version: {e}", details={"error": str(e)}, check="database_version")
+            return CheckResult(
+                success=False,
+                message=f"Error checking database version: {e}",
+                details={"error": str(e)},
+                check="database_version",
+            )
 
     def get_state(self) -> ServerState:
         """Get the current state of the server.

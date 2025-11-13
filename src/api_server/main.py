@@ -4,20 +4,44 @@ import typer
 import uvicorn
 from loguru import logger
 
+from api_server.logging import setup_logging
 from api_server.settings import Settings, get_settings
 
 app = typer.Typer()
 
 
-HOST_OPTION = typer.Option(None, help="Host to bind the server to (overrides API_SERVER_HOST)", metavar="<server>")
-PORT_OPTION = typer.Option(None, help="Port to bind the server to (overrides API_SERVER_PORT)", metavar="<port>")
-RELOAD_OPTION = typer.Option(None, help="Enable/disable auto-reload (overrides API_SERVER_RELOAD)")
-LOG_LEVEL_OPTION = typer.Option(None, help="Log level (overrides API_SERVER_LOG_LEVEL)", metavar="<level>", case_sensitive=False)
-SQL_LOG_OPTION = typer.Option(None, help="Enable/disable SQL query logging (overrides API_SERVER_SQL_LOG)")
-DATABASE_URL_OPTION = typer.Option(None, help="Database URL (overrides API_SERVER_DATABASE_URL)", metavar="<dsn>")
+HOST_OPTION = typer.Option(
+    None,
+    help="Host to bind the server to (overrides API_SERVER_HOST)",
+    metavar="<server>",
+)  # fmt: skip
+PORT_OPTION = typer.Option(
+    None,
+    help="Port to bind the server to (overrides API_SERVER_PORT)",
+    metavar="<port>",
+)  # fmt: skip
+RELOAD_OPTION = typer.Option(
+    None,
+    help="Enable/disable auto-reload (overrides API_SERVER_RELOAD)",
+)  # fmt: skip
+LOG_LEVEL_OPTION = typer.Option(
+    None,
+    help="Log level (overrides API_SERVER_LOG_LEVEL)",
+    metavar="<level>",
+    case_sensitive=False,
+)  # fmt: skip
+SQL_LOG_OPTION = typer.Option(
+    None,
+    help="Enable/disable SQL query logging (overrides API_SERVER_SQL_LOG)",
+)  # fmt: skip
+DATABASE_URL_OPTION = typer.Option(
+    None,
+    help="Database URL (overrides API_SERVER_DATABASE_URL)",
+    metavar="<dsn>",
+)  # fmt: skip
 
 
-def _override_settings(
+def _update_settings(
     base: Settings,
     host: str | None,
     port: int | None,
@@ -35,7 +59,12 @@ def _override_settings(
     if reload is not None:
         data["reload"] = reload
     if log_level is not None:
-        data["log_level"] = log_level.upper()
+        # Validate log level
+        log_level_upper = log_level.upper()
+        allowed = {"TRACE", "DEBUG", "INFO", "WARNING", "ERROR"}
+        if log_level_upper not in allowed:
+            raise ValueError(f"Invalid log level: {log_level}. Must be one of: {', '.join(sorted(allowed))}")
+        data["log_level"] = log_level_upper
     if sql_log is not None:
         data["sql_log"] = sql_log
     if database_url is not None:
@@ -54,7 +83,10 @@ def run(
 ) -> None:
     """Run the application using uvicorn server with centralized settings."""
     base_settings = get_settings()
-    settings = _override_settings(base_settings, host, port, reload, log_level, sql_log, database_url)
+    settings = _update_settings(base_settings, host, port, reload, log_level, sql_log, database_url)
+
+    # Set up logging immediately after settings are updated
+    setup_logging(log_level=settings.log_level)
 
     logger.info(f"Starting API server at http://{settings.host}:{settings.port}")
     logger.info(f"Log level: {settings.log_level}")

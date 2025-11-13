@@ -87,7 +87,11 @@ def _process_nested_mapping(
     # Get the parent field type from the response model
     parent_field_type = response_model_class.model_fields[parent_field].annotation
     # Check if the parent field is a Pydantic model and has the nested attribute
-    if not isinstance(parent_field_type, type) or not issubclass(parent_field_type, BaseModel) or final_attr not in parent_field_type.model_fields:
+    if (
+        not isinstance(parent_field_type, type)
+        or not issubclass(parent_field_type, BaseModel)
+        or final_attr not in parent_field_type.model_fields
+    ):
         return None
     # Get the parent value from the database model
     parent_value = getattr(db_model, parent_field)
@@ -151,7 +155,9 @@ def _process_nested_models(db_model: Any, response_model_class: type[BaseModel])
     return result
 
 
-def to_response_model[T: SQLModel, R: BaseModel](db_model: T, response_model_class: type[R], mapping: dict[str, type[BaseModel]] | None = None) -> R:
+def to_response_model[T: SQLModel, R: BaseModel](
+    db_model: T, response_model_class: type[R], mapping: dict[str, type[BaseModel]] | None = None
+) -> R:
     """Convert a database model to an API response model.
 
     This function handles nested objects and lists by recursively converting them

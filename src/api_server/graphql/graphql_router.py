@@ -41,7 +41,7 @@ def create_graphql_router() -> APIRouter:
     graphql_router = GraphQLRouter(
         schema,
         context_getter=get_context,
-        graphiql=True,
+        graphql_ide="graphiql",
         tags=["GraphQL"],
     )
     return graphql_router

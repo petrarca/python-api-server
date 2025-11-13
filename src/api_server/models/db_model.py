@@ -27,12 +27,19 @@ class Patient(PatientBase, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     patient_id: str = Field(unique=True)
-    primary_address_id: UUID | None = Field(default=None, foreign_key="addresses.id", sa_column_kwargs={"name": "primary_address"})
+    primary_address_id: UUID | None = Field(
+        default=None, foreign_key="addresses.id", sa_column_kwargs={"name": "primary_address"}
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    addresses: list["Address"] = Relationship(back_populates="patient", sa_relationship_kwargs={"foreign_keys": "[Address.patient_id]"})
+    addresses: list["Address"] = Relationship(
+        back_populates="patient", sa_relationship_kwargs={"foreign_keys": "[Address.patient_id]"}
+    )
     primary_address: "Address" = Relationship(
-        sa_relationship_kwargs={"primaryjoin": "Patient.primary_address_id == Address.id", "foreign_keys": "[Patient.primary_address_id]"}
+        sa_relationship_kwargs={
+            "primaryjoin": "Patient.primary_address_id == Address.id",
+            "foreign_keys": "[Patient.primary_address_id]",
+        }
     )

@@ -43,3 +43,11 @@ class PatientCreateInput(PatientInput):
 # Patient create response (includes address)
 class PatientCreateResponse(PatientResponse):
     addresses: list[AddressResponse] = []
+
+
+# Address create input model
+AddressCreateInput = AddressInput
+
+
+# Address create response model
+AddressCreateResponse = AddressResponse

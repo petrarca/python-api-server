@@ -46,8 +46,12 @@ def upgrade() -> None:
         sa.Column("insurance_number", sa.String(50), nullable=True),
         sa.Column("phone", sa.String(20), nullable=True),
         sa.Column("email", sa.String(255), nullable=True),
-        sa.Column("conditions", postgresql.ARRAY(sa.String()), server_default=sa.text("ARRAY[]::character varying[]"), nullable=False),
-        sa.Column("allergies", postgresql.ARRAY(sa.String()), server_default=sa.text("ARRAY[]::character varying[]"), nullable=False),
+        sa.Column(
+            "conditions", postgresql.ARRAY(sa.String()), server_default=sa.text("ARRAY[]::character varying[]"), nullable=False
+        ),
+        sa.Column(
+            "allergies", postgresql.ARRAY(sa.String()), server_default=sa.text("ARRAY[]::character varying[]"), nullable=False
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text(TIMESTAMP_NOW), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text(TIMESTAMP_NOW), nullable=False),
         sa.PrimaryKeyConstraint("id"),
@@ -74,7 +78,9 @@ def upgrade() -> None:
     # Add primary_address column to patients with reference to addresses
     with op.batch_alter_table("patients", schema=None) as batch_op:
         batch_op.add_column(sa.Column("primary_address", postgresql.UUID(), nullable=True))
-        batch_op.create_foreign_key("patients_primary_address_fkey", "addresses", ["primary_address"], ["id"], ondelete="SET NULL")
+        batch_op.create_foreign_key(
+            "patients_primary_address_fkey", "addresses", ["primary_address"], ["id"], ondelete="SET NULL"
+        )
 
     # Create indexes
     op.create_index("idx_patients_patient_id", "patients", ["patient_id"], unique=False)
