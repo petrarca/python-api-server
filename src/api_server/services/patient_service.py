@@ -1,5 +1,6 @@
 """Service for patient-related operations."""
 
+from datetime import datetime
 from functools import lru_cache
 from uuid import UUID
 
@@ -7,6 +8,8 @@ from loguru import logger
 from sqlalchemy import delete, update
 from sqlmodel import Session, select
 
+from api_server.event_bus import EventBus, get_event_bus
+from api_server.events.types import PatientCreatedEvent
 from api_server.models.api_model import AddressResponse, PatientCreateInput, PatientCreateResponse, PatientInput, PatientResponse
 from api_server.models.db_model import Address as AddressModel
 from api_server.models.db_model import Patient as PatientModel
@@ -140,6 +143,17 @@ class PatientService:
             # Refresh the patient to get the generated ID and other default values
             session.refresh(new_patient)
 
+            # Emit PatientCreatedEvent
+            patient_created_event = PatientCreatedEvent(
+                patient_id=new_patient.id,
+                patient_name=f"{new_patient.first_name} {new_patient.last_name}",
+                created_at=datetime.utcnow(),
+            )
+
+            # Emit the event synchronously (sync endpoint context)
+            event_bus: EventBus = get_event_bus()
+            event_bus.emit_sync(patient_created_event)
+
             # Create the patient response
             patient_response = to_response_model(new_patient, PatientCreateResponse, {"addresses": AddressResponse})
             logger.debug(f"Service: create_patient - successfully created patient with ID {new_patient.id}")
@@ -171,8 +185,9 @@ class PatientService:
                 logger.debug(f"Service: update_patient - patient not found: {id_}")
                 return None
 
-            # Update all fields from the patient object
-            patient_data = patient.model_dump()
+            # Update all fields from the patient object, excluding None values
+            # This prevents overwriting required fields like patient_id with None
+            patient_data = patient.model_dump(exclude_unset=True)
 
             # Update the existing patient directly with the dictionary
             existing_patient.sqlmodel_update(patient_data)

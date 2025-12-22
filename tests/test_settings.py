@@ -28,7 +28,7 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch):
     assert s.port == 8080
     assert s.log_level == "INFO"
     assert s.sql_log is False
-    assert s.reload is True
+    assert s.reload is False
 
 
 def test_env_overrides(monkeypatch: pytest.MonkeyPatch):

@@ -86,14 +86,10 @@ tasks:
       - task: db:setup
 
   run:
-    desc: Run the application without auto-reload
+    desc: Run the application
+    dotenv: ['.env']
     cmds:
-      - .venv/bin/python -m {{.MODULE_NAME}} --no-reload {{.CLI_ARGS}}
-
-  run:dev:
-    desc: Run the application with auto-reload for development
-    cmds:
-      - .venv/bin/python -m {{.MODULE_NAME}} --reload {{.CLI_ARGS}}
+      - .venv/bin/python -m {{.MODULE_NAME}} {{.CLI_ARGS}}
 
   fct:
     desc: Format, check, test
@@ -101,6 +97,15 @@ tasks:
       - task: format
       - task: check
       - task: test
+
+  rebuild:all:
+    desc: Clean, install, format/check/test, build, docker
+    cmds:
+      - task: clean:all
+      - task: install
+      - task: fct
+      - task: build
+      - task: docker:build
 
   pre-commit:install:
     desc: Install pre-commit hooks
@@ -125,3 +130,7 @@ tasks:
     deps: [setup]
     cmds:
       - .venv/bin/pre-commit uninstall
+
+  docker:build:
+    desc: Build Docker image for api-server
+    cmd: docker build -t api-server .

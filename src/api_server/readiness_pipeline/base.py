@@ -1,83 +1,11 @@
 """Base models and abstractions for readiness pipeline system."""
 
 from abc import ABC, abstractmethod
-from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
-
-
-class CheckStatus(str, Enum):
-    """Status of individual checks or pipeline stages."""
-
-    PENDING = "pending"
-    RUNNING = "running"
-    SUCCESS = "success"
-    WARNING = "warning"
-    FAILED = "failed"
-    SKIPPED = "skipped"
-    SKIP_STAGE = "skip_stage"
-    NOT_APPLICABLE = "not_applicable"
-
-
-class ServerState(str, Enum):
-    """Overall server health state."""
-
-    STARTING = "starting"
-    CHECKING = "checking"
-    OPERATIONAL = "operational"
-    DEGRADED = "degraded"  # Some non-critical failures
-    ERROR = "error"
-
-
-class ReadinessCheckResult(BaseModel):
-    """Result of a single readiness check."""
-
-    status: CheckStatus
-    message: str
-    details: dict[str, Any] = Field(default_factory=dict)
-    check_name: str
-    stage_name: str | None = None
-    executed_at: str | None = None  # ISO 8601 UTC timestamp
-    execution_time_ms: float | None = None
-    run_once: bool = False
-
-
-class ReadinessStageResult(BaseModel):
-    """Result of a readiness pipeline stage (group of related checks)."""
-
-    stage_name: str
-    status: CheckStatus
-    message: str
-    check_results: list[ReadinessCheckResult] = Field(default_factory=list)
-    executed_at: str | None = None  # ISO 8601 UTC timestamp
-    execution_time_ms: float | None = None
-    total_checks: int = 0
-    successful_checks: int = 0
-    failed_checks: int = 0
-    skipped_checks: int = 0
-    run_once: bool = False
-
-
-class ReadinessPipelineResult(BaseModel):
-    """Complete readiness pipeline execution result."""
-
-    server_state: ServerState
-    overall_status: CheckStatus
-    message: str
-    executed_at: str | None = None  # ISO 8601 UTC timestamp
-    stage_results: list[ReadinessStageResult] = Field(default_factory=list)
-    total_execution_time_ms: float | None = None
-
-    # Summary statistics
-    total_stages: int = 0
-    successful_stages: int = 0
-    failed_stages: int = 0
-    skipped_stages: int = 0
-    total_checks: int = 0
-    successful_checks: int = 0
-    failed_checks: int = 0
-    skipped_checks: int = 0
+# Import models from separate module to avoid circular dependencies
+from .enums import CheckStatus
+from .models import ReadinessCheckResult
 
 
 class ReadinessCheck(ABC):

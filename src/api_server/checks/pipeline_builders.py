@@ -1,15 +1,15 @@
-"""Reusable pipeline stage builders.
+"""Reusable pipeline stage builders for API server template.
 
 This module provides functions to build common pipeline stages that can be
-reused by both the server startup pipeline and CLI pipelines.
+reused across different applications.
 """
 
 from api_server.readiness_pipeline import ReadinessPipelineBuilder
 
-from .alembic_setup import AlembicSetupCheck
+# Import essential checks only
 from .database_health_check import DatabaseHealthCheck
 from .database_initialization import DatabaseInitializationCheck
-from .database_version import DatabaseVersionCheck
+from .database_schema_check import DatabaseSchemaCheck
 
 
 def add_database_stage(builder: ReadinessPipelineBuilder) -> ReadinessPipelineBuilder:
@@ -18,8 +18,7 @@ def add_database_stage(builder: ReadinessPipelineBuilder) -> ReadinessPipelineBu
     Includes:
     - Database initialization check
     - Database health check
-    - Alembic setup check
-    - Database version check
+    - Database schema check (validates schema state, no auto-migration)
 
     Args:
         builder: Pipeline builder to add stage to
@@ -36,7 +35,6 @@ def add_database_stage(builder: ReadinessPipelineBuilder) -> ReadinessPipelineBu
         )
         .add_check(DatabaseInitializationCheck())
         .add_check(DatabaseHealthCheck())
-        .add_check(AlembicSetupCheck())
-        .add_check(DatabaseVersionCheck())
+        .add_check(DatabaseSchemaCheck())
     )
     return builder

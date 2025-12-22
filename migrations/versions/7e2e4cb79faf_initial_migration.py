@@ -62,8 +62,8 @@ def upgrade() -> None:
         "addresses",
         sa.Column("id", postgresql.UUID(), server_default=sa.text(UUID_GEN), nullable=False),
         sa.Column("patient_id", postgresql.UUID(), nullable=False),
-        sa.Column("address_type", sa.String(20), nullable=False),
-        sa.Column("address_line", sa.Text(), nullable=False),
+        sa.Column("address_type", sa.String(20), nullable=True),
+        sa.Column("address_line", sa.Text(), nullable=True),
         sa.Column("street", sa.String(255), nullable=True),
         sa.Column("city", sa.String(100), nullable=True),
         sa.Column("state", sa.String(100), nullable=True),
@@ -87,43 +87,6 @@ def upgrade() -> None:
     op.create_index("idx_patients_allergies", "patients", ["allergies"], postgresql_using="gin")
     op.create_index("idx_addresses_patient_id", "addresses", ["patient_id"], unique=False)
 
-    # Create updated_at triggers
-    op.execute("""
-    CREATE OR REPLACE FUNCTION update_updated_at_column()
-    RETURNS TRIGGER AS $$
-    BEGIN
-        NEW.updated_at = NOW();
-        RETURN NEW;
-    END;
-    $$ language 'plpgsql';
-    """)
-
-    op.execute("""
-    CREATE TRIGGER update_patients_updated_at
-        BEFORE UPDATE ON patients
-        FOR EACH ROW
-        EXECUTE FUNCTION update_updated_at_column();
-    """)
-
-    op.execute("""
-    CREATE TRIGGER update_addresses_updated_at
-        BEFORE UPDATE ON addresses
-        FOR EACH ROW
-        EXECUTE FUNCTION update_updated_at_column();
-    """)
-
-    # Create health check function
-    op.execute("""
-    CREATE OR REPLACE FUNCTION health_check()
-    RETURNS boolean AS $$
-    BEGIN
-      -- Simple health check that verifies database connection
-      -- and basic functionality
-      RETURN TRUE;
-    END;
-    $$ LANGUAGE plpgsql;
-    """)
-
 
 def downgrade() -> None:
     """Drop all tables in the correct order to handle foreign key constraints."""
@@ -137,7 +100,3 @@ def downgrade() -> None:
 
     op.drop_table("addresses")
     op.drop_table("patients")
-
-    # Drop functions
-    op.execute("DROP FUNCTION IF EXISTS health_check()")
-    op.execute("DROP FUNCTION IF EXISTS update_updated_at_column()")

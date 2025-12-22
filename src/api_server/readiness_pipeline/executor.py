@@ -10,14 +10,14 @@ Key Features:
 - Comprehensive logging and progress tracking
 - Exception handling with graceful degradation
 - Stage skipping on critical failures
+- Stage skipping on critical failures
 """
-
-import time
 
 import arrow
 from loguru import logger
 
-from .base import CheckStatus, ReadinessPipelineResult, ReadinessStageResult, ServerState
+from .enums import CheckStatus, ServerState
+from .models import ReadinessPipelineResult, ReadinessStageResult
 from .stage import ReadinessStage
 
 
@@ -50,7 +50,7 @@ class PipelineExecutor:
                 stage results, overall status, and execution timing
         """
         logger.info("Starting readiness pipeline execution")
-        start_time = time.time()
+        start_time = arrow.utcnow().float_timestamp
         executed_at = arrow.utcnow().isoformat()
 
         result = ReadinessPipelineResult(
@@ -86,12 +86,12 @@ class PipelineExecutor:
                     self._mark_remaining_stages_skipped(result, stage, stages)
                     break
 
-        except Exception as e:
+        except (ValueError, TypeError, RuntimeError, AttributeError) as e:
             logger.error(f"Pipeline execution failed with exception: {e}")
             result.overall_status = CheckStatus.FAILED
             result.server_state = ServerState.ERROR
             result.message = f"Pipeline execution failed: {str(e)}"
-            result.total_execution_time_ms = (time.time() - start_time) * 1000
+            result.total_execution_time_ms = (arrow.utcnow().float_timestamp - start_time) * 1000
 
         return result
 

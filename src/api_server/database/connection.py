@@ -8,7 +8,6 @@ provided via command line.
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any
 
 from loguru import logger
 from sqlmodel import Session, create_engine, text
@@ -126,7 +125,7 @@ def borrow_db_session() -> Generator[Session, None, None]:
     as a dependency instead.
 
     Example:
-        from api_server.database import borrow_db_session
+        from . import borrow_db_session
         with borrow_db_session() as session:
             session.exec(text("SELECT 1"))
     """
@@ -152,32 +151,3 @@ def get_db_session() -> Session:
     """
     with borrow_db_session() as session:
         yield session
-
-
-def is_healthy(session: Session) -> dict[str, Any]:
-    """Check if the database connection is healthy.
-
-    Args:
-        session: The database session to use for the health check.
-
-    Returns:
-        A dictionary containing the database health status and connection info.
-    """
-    try:
-        # Execute a simple query to check database connectivity
-        result = session.exec(text("SELECT 1"))
-        result.one()
-
-        # Get database connection information
-        db_info = {
-            "status": "healthy",
-            "connection": "active",
-        }
-        return db_info
-    except Exception as e:
-        logger.error(f"Database health check failed: {str(e)}")
-        return {
-            "status": "unhealthy",
-            "error": str(e),
-            "connection": "failed",
-        }

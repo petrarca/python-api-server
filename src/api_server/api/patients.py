@@ -26,6 +26,25 @@ from api_server.services.patient_service import PatientService, get_patient_serv
 router = APIRouter()
 
 
+@router.get("/patients/recent", response_model=list[PatientResponse])
+def get_recent_patients(
+    limit: int = 10,
+    patient_service: PatientService = Depends(get_patient_service),
+    session: Session = Depends(get_db_session),
+) -> list[PatientResponse]:
+    """Get the most recently updated patients.
+
+    Args:
+        limit: Number of patients to return (default: 10)
+        patient_service: Patient service instance
+        session: Database session
+
+    Returns:
+        List of PatientResponse objects
+    """
+    return patient_service.get_most_recent_changed_patients(session, limit)
+
+
 @router.get("/patients/{patient_id}", response_model=PatientResponse)
 def get_patient(
     patient_id: UUID,
@@ -192,22 +211,3 @@ def update_primary_address(
             detail="Failed to update primary address - patient or address not found",
         )
     return {"patient_id": str(patient_id), "primary_address_id": str(updated_address_id) if updated_address_id else None}
-
-
-@router.get("/patients/recent", response_model=list[PatientResponse])
-def get_recent_patients(
-    limit: int = 10,
-    patient_service: PatientService = Depends(get_patient_service),
-    session: Session = Depends(get_db_session),
-) -> list[PatientResponse]:
-    """Get the most recently updated patients.
-
-    Args:
-        limit: Number of patients to return (default: 10)
-        patient_service: Patient service instance
-        session: Database session
-
-    Returns:
-        List of PatientResponse objects
-    """
-    return patient_service.get_most_recent_changed_patients(session, limit)

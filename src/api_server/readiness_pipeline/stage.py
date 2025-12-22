@@ -29,13 +29,14 @@ Typical Usage:
         print("Database validation passed")
 """
 
-import time
-
 import arrow
 from loguru import logger
 
-from .base import CheckStatus, ReadinessCheck, ReadinessStageResult
-from .check_executor import CheckExecutor
+from api_server.readiness_pipeline.base import ReadinessCheck
+from api_server.readiness_pipeline.check_executor import CheckExecutor
+from api_server.readiness_pipeline.enums import CheckStatus
+from api_server.readiness_pipeline.models import ReadinessStageResult
+
 from .processor import ResultProcessor
 
 
@@ -198,7 +199,7 @@ class ReadinessStage:
             force_rerun: If True, pass to checks to ignore their run_once cache
         """
         logger.info(f"Executing pipeline stage: {self.name}")
-        start_time = time.time()
+        start_time = arrow.utcnow().float_timestamp
         executed_at = arrow.utcnow().isoformat()
 
         result = ReadinessStageResult(
@@ -218,7 +219,7 @@ class ReadinessStage:
         # Set final stage status if still running
         self._result_processor.finalize_stage_result(result, self.name)
 
-        result.execution_time_ms = (time.time() - start_time) * 1000
+        result.execution_time_ms = (arrow.utcnow().float_timestamp - start_time) * 1000
         logger.info(f"Stage {self.name} completed with status {result.status.value} in {result.execution_time_ms:.1f}ms")
         return result
 

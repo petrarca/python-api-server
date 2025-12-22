@@ -4,7 +4,7 @@ from functools import lru_cache
 
 from api_server.readiness_pipeline import ReadinessPipeline, ReadinessPipelineBuilder
 
-# Import pipeline builders
+# Import pipeline builders (essential ones only)
 from .pipeline_builders import add_database_stage
 
 
@@ -12,7 +12,7 @@ def _create_readiness_pipeline() -> ReadinessPipeline:
     """Get the default readiness pipeline for server startup.
 
     Creates a pipeline with stages:
-    1. Database stage (non-critical) - metadata DB, alembic setup, DB version
+    1. Database stage (non-critical) - database health, schema, alembic setup
 
     Returns:
         ReadinessPipeline: The readiness pipeline for this server

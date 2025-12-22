@@ -21,13 +21,18 @@ Typical Usage:
 
     if final_result.server_state == ServerState.OPERATIONAL:
         print("System is ready for traffic")
+    elif final_result.server_state == ServerState.DEGRADED:
+        print("System is ready but with limited functionality")
+    else:
+        print("System is not ready")
+
 """
 
-import time
-
+import arrow
 from loguru import logger
 
-from .base import CheckStatus, ReadinessPipelineResult, ServerState
+from .enums import CheckStatus, ServerState
+from .models import ReadinessPipelineResult
 
 
 class ResultCalculator:
@@ -48,7 +53,7 @@ class ResultCalculator:
     Example:
         calculator = ResultCalculator()
         pipeline_result = ReadinessPipelineResult(...)
-        start_time = time.time()
+        start_time = arrow.utcnow().float_timestamp
 
         # Execute pipeline stages...
 
@@ -98,7 +103,7 @@ class ResultCalculator:
                 stage_results=[...],  # Completed stage results
             )
 
-            final_result = calculator.finalize_result(result, time.time())
+            final_result = calculator.finalize_result(result, arrow.utcnow().float_timestamp)
 
             if final_result.server_state == ServerState.OPERATIONAL:
                 print("System is ready")
@@ -137,5 +142,5 @@ class ResultCalculator:
                 result.message = f"Pipeline completed with {result.failed_checks} check failures"
                 logger.warning(f"Pipeline completed with {result.failed_checks} failures")
 
-        result.total_execution_time_ms = (time.time() - start_time) * 1000
+        result.total_execution_time_ms = (arrow.utcnow().float_timestamp - start_time) * 1000
         return result

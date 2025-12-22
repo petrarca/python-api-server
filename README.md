@@ -1,454 +1,122 @@
-# Python API server starter project
+# Python API Server Template
 
-## Overview
+A production-ready FastAPI template with REST & GraphQL endpoints, readiness pipeline, event bus, and modern tooling.
 
-Starter project demonstrating backend API-server best practices: unified REST & GraphQL endpoints, layered architecture, shared SQLModel models, and a modern tooling stack (uv, Alembic, Ruff, pytest).
+## Features
 
-## Current Implementation
+- **FastAPI** with REST endpoints and **Strawberry GraphQL**
+- **Readiness Pipeline** - Modular health checks with stage-based execution
+- **Internal Event Bus** - In-process async event handling with dependency injection
+- **Sample Service & Event Handler** - Patient service and event handler examples
+- **SQLModel**/SQLAlchemy with PostgreSQL and Alembic migrations
+- **Modern Tooling** - uv package manager, ruff formatting/linting, pytest
+- **Docker** - Multi-stage build for production deployment
+- **Taskfile** - Unified development workflow
 
-- REST endpoints: `/health-check`, `/ping`, `/version` (and a base API router at `/api`)
-- GraphQL at `/graphql` with GraphiQL UI
-- CLI via `api-server` console command (Typer) and `python -m api_server.main`
-- Database layer using SQLModel/SQLAlchemy; migrations via Alembic
-- Taskfile-driven workflow (uv venv/install, ruff format/lint, pytest, alembic, run)
+## Requirements
 
-## Technology Stack
+- **Python 3.13+**
+- **[uv](https://github.com/astral-sh/uv)** - Fast Python package manager
+- **[Task](https://taskfile.dev/)** - Task runner
+- **PostgreSQL** - Database (for full functionality)
+- **Docker** (optional) - For containerized deployment
 
-### Core
-- **Language**: Python 3.13+
-- **Web Framework**: FastAPI
-- **GraphQL**: Strawberry GraphQL (with FastAPI integration)
-- **ORM**: SQLModel (SQLAlchemy-based)
-- **Database**: PostgreSQL (via psycopg)
-- **Migration**: Alembic
+### Core Dependencies
 
-### Development Tools
-- **Package Manager**: uv (faster alternative to pip)
-- **CLI Framework**: Typer
-- **Linting & Formatting**: ruff
-- **Testing**: pytest
-- **Environment**: python-dotenv
-- **Logging**: loguru
-- **Task Runner**: Taskfile (Go Task)
+- FastAPI, Strawberry GraphQL, Uvicorn
+- SQLModel, SQLAlchemy, Alembic, psycopg
+- Pydantic Settings, Typer, Loguru
+- Tenacity, Arrow
 
-### Documentation
-- **API Docs**: OpenAPI (Swagger UI), ReDoc
-- **GraphQL UI**: GraphiQL
-- **Templates**: Jinja2
+### Dev Dependencies
+
+- ruff, pytest, pytest-cov, pytest-asyncio, pre-commit
+
+## Quick Start
+
+```bash
+# Install prerequisites
+curl -LsSf https://astral.sh/uv/install.sh | sh  # Install uv
+# Install Task: https://taskfile.dev/installation/
+
+# Setup and run
+task setup          # Create virtual environment
+task install        # Install dependencies
+task run:dev        # Start development server
+```
+
+## Build
+
+```bash
+task build           # Build Python package (dist/*.whl)
+task docker:build    # Build Docker image
+task rebuild:all     # Full rebuild: clean, install, test, build, docker
+```
 
 ## Project Structure
 
 ```
-python-api-server/
-├── src/
-│   └── api_server/                 # Main application package
-│       ├── api/                    # REST API endpoints
-│       │   ├── api_router.py       # API router configuration
-│       │   ├── health_check.py     # /health-check endpoint
-│       │   ├── ping.py             # /ping endpoint
-│       │   └── version.py          # /version endpoint
-│       ├── graphql/                # GraphQL schema and router
-│       │   ├── graphql_router.py   # /graphql with GraphiQL
-│       │   ├── context.py         # GraphQL context and dependencies
-│       │   ├── schema.py          # GraphQL schema definitions (queries, mutations)
-│       │   └── types.py           # GraphQL type definitions (Strawberry models)
-│       ├── models/                 # Data models (SQLModel)
-│       ├── services/               # Business logic and services
-│       ├── templates/              # HTML templates (index)
-│       ├── app.py                  # FastAPI application setup
-│       ├── database.py             # Database connection and utilities
-│       ├── logging.py              # Logging configuration
-│       └── main.py                 # CLI entry (Typer) and uvicorn runner
-├── migrations/                     # Database migrations (Alembic)
-│   ├── versions/
-│   ├── env.py
-│   └── script.py.mako
-├── Taskfile.yml                    # Common development tasks (uv, ruff, pytest, alembic)
-├── pyproject.toml                  # Project metadata, deps, tooling
-├── setup.py                        # Package setup shim
-├── alembic.ini                     # Alembic configuration
-├── Dockerfile                      # Containerization
-├── docs/                           # Additional docs
-└── README.md
+src/api_server/
+├── api/             # REST endpoints
+├── graphql/         # GraphQL schema & resolvers
+├── models/          # SQLModel database models
+├── services/        # Business logic & DI container
+├── events/          # Event types & handlers
+├── readiness_pipeline/  # Health check framework
+├── event_bus/       # Async event system
+├── checks/          # Readiness check implementations
+├── app.py           # FastAPI application
+├── main.py          # CLI entry point (Typer)
+└── settings.py      # Pydantic settings
 ```
 
-## Development Setup
-
-### Prerequisites
-
-- Python 3.13 or higher
-- [uv](https://github.com/astral-sh/uv) package manager (faster alternative to pip)
-
-### Installation
+## Development Tasks
 
 ```bash
-# Install dependencies using uv directly
-uv pip install -e ".[dev]"
-
-# Or using Task (recommended)
-task install
+task fct             # Format, check, test
+task rebuild:all     # Full rebuild including Docker
+task docker:build    # Build Docker image
+task db:setup        # Run database migrations
+task test            # Run pytest
 ```
 
-### Development Workflow with Task
-
-Backend uses [Task](https://taskfile.dev/) as a unified task runner (simple YAML definitions).
-
-#### Git Hooks
-
-Pre-commit hooks run `task fct` (format, check, test) to enforce style and correctness before commits.
-
-To install the pre-commit hooks:
+## Configuration
 
 ```bash
-# Install pre-commit hooks
-task pre-commit:install
+cp .env.example .env   # Copy and adjust values
 ```
 
-This will install hooks that run automatically on `git commit` and `git push` operations. You can also run the hooks manually on all files:
+Environment variables with `API_SERVER_` prefix (see `.env.example`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `API_SERVER_HOST` | `0.0.0.0` | Server bind address |
+| `API_SERVER_PORT` | `8080` | Server port |
+| `API_SERVER_DATABASE_URL` | - | PostgreSQL connection string |
+| `API_SERVER_LOG_LEVEL` | `INFO` | TRACE/DEBUG/INFO/WARNING/ERROR |
+| `API_SERVER_SQL_LOG` | `false` | Enable SQL query logging |
+| `API_SERVER_PROFILES` | - | `rest`, `graphql`, or both |
+
+## API Endpoints
+
+- **REST**: http://localhost:8080/docs (Swagger UI)
+- **GraphQL**: http://localhost:8080/graphql (GraphiQL)
+- **Health**: http://localhost:8080/health-check
+
+## Docker
 
 ```bash
-# Run pre-commit hooks on all files
-task pre-commit:run
+task docker:build    # Build image
+docker run -e API_SERVER_DATABASE_URL=... -p 8080:8080 api-server
 ```
 
-#### Virtual Environment and Package Management
-
-The backend uses [uv](https://github.com/astral-sh/uv) for virtual environment creation and package management. The Taskfile is configured to use uv directly with the Python executable in the virtual environment, avoiding the need to activate the virtual environment manually. This approach ensures compatibility across different shell environments.
-
-#### Available Tasks
-
-This project's Taskfile provides the following commands:
-
-- `task setup` - Create a Python virtual environment using uv
-- `task install` - Install the package and development dependencies using uv
-- `task clean` - Clean build artifacts
-- `task clean:all` - Clean all artifacts including virtual environment
-- `task format` - Format code using ruff
-- `task lint` - Run ruff linter (auto-fix enabled)
-- `task test` - Run tests with pytest
-- `task test:cov` - Run tests with coverage report
-- `task check` - Run format and lint
-- `task build` - Build the package
-- `task db:setup` - Setup the database and run all migrations
-- `task db:migrate` - Generate a new migration
-- `task db:upgrade` - Run all pending migrations
-- `task db:downgrade` - Rollback the last migration
-- `task db:reset` - Reset the database (WARNING - This will delete all data)
-- `task run` - Run the application without auto-reload
-- `task run:dev` - Run the application with auto-reload for development
-- `task fct` - Format, check, test
-- `task pre-commit:install` - Install pre-commit hooks
-- `task pre-commit:update` - Update pre-commit hooks
-- `task pre-commit:run` - Run pre-commit hooks on all files
-
-Run tasks from the project root, e.g.:
-
-```bash
-task run:dev
-```
-
-### Development Server
-
-For development with hot reloading (automatically restarts the server when code changes):
-
-```bash
-# Start the development server with hot reloading
-task run:dev
-```
-
-Recommended for development: automatic reload on code changes.
-
-### Configuration
-
-Runtime configuration is centralized in a Pydantic Settings model (`api_server.config.Settings`).
-
-Resolution order (highest precedence last):
-1. Default values embedded in `Settings`
-2. `.env` file (if present) – loaded automatically
-3. Environment variables with prefix `API_SERVER_`
-4. CLI overrides (Typer arguments) passed to `python -m api_server.main` or the `api-server` entrypoint
-
-Access the settings instance anywhere:
-
-```python
-from api_server.config import get_settings
-
-settings = get_settings()
-print(settings.host, settings.port)
-```
-
-Inside FastAPI routes you can depend on it:
-
-```python
-from fastapi import Depends
-from api_server.config import get_settings, Settings
-
-@app.get("/info")
-def info(settings: Settings = Depends(get_settings)):
-   return {"host": settings.host, "port": settings.port}
-```
-
-When log level is `DEBUG` or `TRACE`, settings are logged once at startup (non-secret fields).
-
-#### Environment Variables
-
-Current `Settings` fields (extend as needed):
-
-| Field | Env Var | Default | Description |
-|-------|---------|---------|-------------|
-| `host` | `API_SERVER_HOST` | `0.0.0.0` | Interface to bind |
-| `port` | `API_SERVER_PORT` | `8080` | Port to listen on |
-| `log_level` | `API_SERVER_LOG_LEVEL` | `INFO` | TRACE / DEBUG / INFO / WARNING / ERROR |
-| `sql_log` | `API_SERVER_SQL_LOG` | `False` | Enable SQLAlchemy SQL echo logging |
-| `reload` | `API_SERVER_RELOAD` | `True` | Auto-reload in dev (CLI override supported) |
-
-Add database URL / secrets by appending fields to `Settings`:
-
-```python
-class Settings(BaseSettings):
-   database_url: str = Field(..., description="Primary database DSN")  # required
-   # secret_token: SecretStr | None = None  # example secret
-```
-
-Then export `API_SERVER_DATABASE_URL` (and optionally add to `.env`). Pydantic enforces required fields.
-
-**Example `.env` file:**
-
-```
-API_SERVER_HOST=0.0.0.0
-API_SERVER_PORT=8080
-API_SERVER_LOG_LEVEL=DEBUG
-API_SERVER_SQL_LOG=true
-API_SERVER_DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5432/postgres
-```
-
-Variables can live in `.env` (example: `.env.example`).
-
-#### Command-line Arguments
-
-CLI arguments override environment-driven settings for that invocation:
-
-| Argument | Effect |
-|----------|--------|
-| `--host` / `--port` | Override bind interface/port |
-| `--log-level` | Override `log_level` (case-insensitive) |
-| `--reload` / `--no-reload` | Force enable/disable auto-reload |
-| `--sql-log` / `--no-sql-log` | Toggle SQL logging |
-
-Examples:
-
-```bash
-api-server --host=127.0.0.1 --port=9000 --log-level=DEBUG --sql-log
-python -m api_server.main --no-reload --log-level=WARNING
-```
-
-#### Redacting Sensitive Fields (Optional)
-
-If you add secrets (e.g., `SecretStr`), avoid dumping them verbatim:
-
-```python
-if settings.log_level in {"DEBUG", "TRACE"}:
-   safe = settings.model_dump(exclude={"secret_token"})
-   logger.debug(f"Effective settings: {safe}")
-```
-
-### Running the Server
-
-```bash
-# Run the server with default settings (port 8080)
-python -m api_server.main
-
-# Run the server on a specific port
-python -m api_server.main --port=8081
-
-# Run the server with custom host
-python -m api_server.main --host=127.0.0.1 --port=8080
-
-# Run the server without auto-reload
-python -m api_server.main --no-reload
-
-# Using the installed console script (via Typer)
-api-server --host=127.0.0.1 --port=8080 --log-level=INFO
-```
-
-Or run via Task:
-
-```bash
-# Run with default settings
-task run
-
-# Run on a specific port
-task run -- --port=8080
-```
-
-## Database Setup and Migration
-
-Alembic handles database migrations:
-
-### Setting Up a New Database
-
-```bash
-# Configure your database connection in .env file
-API_SERVER_DATABASE_URL="postgresql+psycopg://username:password@hostname:port/database"
-
-# Initialize the database with all migrations
-task db:setup
-```
-
-### Creating a New Migration
-
-After making changes to your database models, create a new migration:
-
-```bash
-# Generate a migration with a descriptive message
-task db:migrate -- "Add patient addresses table"
-```
-
-### Upgrading the Database
-
-To apply all pending migrations:
-
-```bash
-task db:upgrade
-```
-
-### Downgrading the Database
-
-To roll back the last migration:
-
-```bash
-task db:downgrade
-```
-
-### Resetting the Database
-
-**Warning**: This will delete all data in the database.
-
-```bash
-task db:reset
-```
-
-## API Documentation
-
-API documentation is available at:
-- Swagger UI: http://localhost:8080/docs
-- ReDoc: http://localhost:8080/redoc
-- OpenAPI JSON: http://localhost:8080/openapi.json
-- GraphiQL (GraphQL): http://localhost:8080/graphql
-
-## Health Check Endpoint
-
-Health-related endpoints:
-- http://localhost:8080/health-check
-- Basic ping: http://localhost:8080/ping
-- Version: http://localhost:8080/version
-
-## Deployment
-
-### Docker Deployment
-
-The backend server can be containerized using Docker with the provided utility scripts:
-
-```bash
-# Build the Docker image
-./scripts/docker-rebuild.sh
-
-# Run the container
-./scripts/docker-run.sh
-
-# Stop the container
-./scripts/docker-stop.sh
-```
-
-Scripts advantages over raw Docker commands:
-
-- **Automatic environment variable resolution**: Variables are automatically resolved from your environment or `.env` files
-- **Automatic port mapping**: Exposed ports from the Dockerfile are automatically mapped
-- **Container name resolution**: Container names are automatically extracted from the Dockerfile
-- **Custom environment files**: Use `--dot-env` option to specify custom environment files (e.g., `--dot-env .env.docker`)
-
-```bash
-# Run with a custom environment file
-./scripts/docker-run.sh --dot-env .env.docker
-
-# Show the command without executing it
-./scripts/docker-run.sh --no-exec
-
-# Pass additional arguments to docker run
-./scripts/docker-run.sh -- -v /local/path:/container/path --restart always
-```
-
-**Important**: When running in Docker, use `host.docker.internal` as the database host in your `.env.docker` file to connect to services running on your host machine.
-
-Once running, you can access:
-- API: http://localhost:8080
-- Swagger UI: http://localhost:8080/docs
-- ReDoc: http://localhost:8080/redoc
-- Health Check: http://localhost:8080/health-check
-
-Dockerfile highlights:
-- Exposes port 8080 for the FastAPI application
-- Sets environment variables:
-  - `API_SERVER_HOST=0.0.0.0`
-  - `API_SERVER_LOG_LEVEL=INFO`
-- Required environment variables that must be set:
-  - `API_SERVER_DATABASE_URL` (can be set in `.env` file)
-- Runs the application with the command: `api-server --host=0.0.0.0 --port=8080 --no-reload`
-
-## Adapting This Template For Your Project
-
-This template is designed to be easily adapted for your own projects. Here's how to customize it for your needs:
-
-### Step-by-Step Guide
-
-Let's say you want to rename the project to `my_server`:
-
-1. **Rename the source directory**:
-   ```bash
-   # Rename the main package directory
-   mv src/api_server src/my_server
-   ```
-
-2. **Replace all occurrences of 'api_server' with 'my_server'**:
-   - Important: This is case sensitive!
-   - Use your IDE's "Replace in Files" feature (in VS Code: Ctrl+Shift+H or Cmd+Shift+H)
-   - Search for `api_server` and replace with `my_server` across all files
-   - Make sure to update:
-     - Python imports
-     - Environment variable prefixes
-     - Package names in pyproject.toml
-     - References in Taskfile.yml
-     - Database connection strings
-     - Docker configuration
-
-3. **Update the configuration prefix (optional)**:
-   If you want a different env prefix (e.g. `MY_SERVER_`), edit `env_prefix` in `Settings.model_config` inside `config.py`.
-
-4. **Test if everything is still working**:
-   ```bash
-   # Run format, check, and tests to verify the project is still functional
-   task fct
-   
-   # Test database migrations
-   task db:setup
-   ```
-
-5. **Replace example code with your implementations**:
-   - Replace the example models in `src/my_server/models/`
-   - Update services in `src/my_server/services/`
-   - Modify GraphQL schema in `src/my_server/graphql/`
-   - Add your API endpoints to `src/my_server/api/`
-   - Update database migrations as needed
-
-### Tips for a Smooth Transition
-
-- After renaming, update `.env` to use the new prefix if changed
-- Adjust `Settings` to include project-specific fields early (keeps config discoverable)
-- Update the console script name in pyproject.toml if you want to change the CLI command
-- Regenerate database migrations if you change the models
-- Add secrets as `SecretStr` fields to automatically prevent accidental plain-text printing
-- Update or add tests that call `get_settings()` to validate new required fields
+## Architecture
+
+- **Readiness Pipeline**: Modular health checks with database, schema, and custom checks
+- **Internal Event Bus**: In-process async events with dependency injection
+- **Services**: Singleton pattern with dependency injection container
+- **Profiles**: Support for `rest` and `graphql` execution profiles
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT

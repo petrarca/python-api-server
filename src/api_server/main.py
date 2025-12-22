@@ -5,7 +5,7 @@ import uvicorn
 from loguru import logger
 
 from api_server.logging import setup_logging
-from api_server.settings import Settings, get_settings
+from api_server.settings import get_settings
 
 app = typer.Typer()
 
@@ -39,81 +39,140 @@ DATABASE_URL_OPTION = typer.Option(
     help="Database URL (overrides API_SERVER_DATABASE_URL)",
     metavar="<dsn>",
 )  # fmt: skip
+PROFILE_OPTION = typer.Option(
+    None,
+    "-p",
+    "--profile",
+    help="Server profile: rest, graphql, or combination (e.g., 'rest,graphql'). Omit for all.",
+    metavar="<profile>",
+)  # fmt: skip
+CHECK_ONLY_OPTION = typer.Option(
+    None,
+    "--check-only",
+    help="Run readiness checks only, then exit (without starting server)",
+    flag_value=True,
+)  # fmt: skip
 
 
 def _update_settings(
-    base: Settings,
     host: str | None,
     port: int | None,
-    reload: bool | None,
     log_level: str | None,
+    reload: bool | None,
     sql_log: bool | None,
     database_url: str | None,
-) -> Settings:
-    """Return a new Settings object with CLI overrides applied."""
-    data = base.model_dump()
+    profiles: str | None,
+) -> None:
+    """Update settings with CLI overrides.
+
+    Args:
+        host: Host override
+        port: Port override
+        log_level: Log level override
+        reload: Reload override
+        sql_log: SQL logging override
+        database_url: Database URL override
+        profiles: Profile configuration override
+    """
+    settings = get_settings()
+
+    # Apply overrides
     if host is not None:
-        data["host"] = host
+        settings.host = host
     if port is not None:
-        data["port"] = port
-    if reload is not None:
-        data["reload"] = reload
+        settings.port = port
     if log_level is not None:
-        # Validate log level
-        log_level_upper = log_level.upper()
-        allowed = {"TRACE", "DEBUG", "INFO", "WARNING", "ERROR"}
-        if log_level_upper not in allowed:
-            raise ValueError(f"Invalid log level: {log_level}. Must be one of: {', '.join(sorted(allowed))}")
-        data["log_level"] = log_level_upper
+        settings.log_level = log_level
+    if reload is not None:
+        settings.reload = reload
     if sql_log is not None:
-        data["sql_log"] = sql_log
+        settings.sql_log = sql_log
     if database_url is not None:
-        data["database_url"] = database_url
-    return Settings(**data)
+        settings.database_url = database_url
+    if profiles is not None:
+        settings.profiles = profiles
 
 
 @app.command()
 def run(
     host: str = HOST_OPTION,
     port: int = PORT_OPTION,
+    log_level: str = LOG_LEVEL_OPTION,
     reload: bool = RELOAD_OPTION,
+    sql_log: bool = SQL_LOG_OPTION,
+    database_url: str = DATABASE_URL_OPTION,
+    profile: str = PROFILE_OPTION,
+) -> None:
+    """Run the API server."""
+    # Update settings with CLI overrides
+    _update_settings(host, port, log_level, reload, sql_log, database_url, profile)
+
+    # Get final settings
+    settings = get_settings()
+
+    # Setup logging
+    setup_logging(settings.log_level)
+
+    logger.info(f"Starting API server on {settings.host}:{settings.port}")
+    logger.info(f"Profile: {settings.profiles or 'all'}")
+    logger.info(f"Reload: {settings.reload}")
+
+    # Run the app - use import string for reload mode
+    if settings.reload:
+        uvicorn.run(
+            "api_server.app:app",
+            host=settings.host,
+            port=settings.port,
+            reload=True,
+            log_level=settings.log_level.lower(),
+        )
+    else:
+        from api_server.app import app as fastapi_app
+
+        uvicorn.run(
+            fastapi_app,
+            host=settings.host,
+            port=settings.port,
+            reload=False,
+            log_level=settings.log_level.lower(),
+        )
+
+
+@app.command()
+def check(
+    host: str = HOST_OPTION,
+    port: int = PORT_OPTION,
     log_level: str = LOG_LEVEL_OPTION,
     sql_log: bool = SQL_LOG_OPTION,
     database_url: str = DATABASE_URL_OPTION,
+    profile: str = PROFILE_OPTION,
 ) -> None:
-    """Run the application using uvicorn server with centralized settings."""
-    base_settings = get_settings()
-    settings = _update_settings(base_settings, host, port, reload, log_level, sql_log, database_url)
+    """Run readiness checks only."""
+    # Update settings with CLI overrides
+    _update_settings(host, port, log_level, False, sql_log, database_url, profile)
 
-    # Set up logging immediately after settings are updated
-    setup_logging(log_level=settings.log_level)
+    # Get final settings
+    settings = get_settings()
 
-    logger.info(f"Starting API server at http://{settings.host}:{settings.port}")
-    logger.info(f"Log level: {settings.log_level}")
-    logger.info(f"SQL logging: {'enabled' if settings.sql_log else 'disabled'}")
-    if settings.database_url:
-        logger.info("Database URL configured (value hidden)")
-    else:
-        logger.warning("No database URL configured (API_SERVER_DATABASE_URL)")
+    # Setup logging
+    setup_logging(settings.log_level)
 
-    if settings.log_level in {"DEBUG", "TRACE"}:
-        # Safe dump (no secrets yet). If secrets added later, exclude them.
-        logger.debug(f"Effective settings: {settings.model_dump()}")
+    logger.info("Running readiness checks only")
 
-    log_config = uvicorn.config.LOGGING_CONFIG
-    log_config["formatters"]["default"]["fmt"] = "%(levelprefix)s %(message)s"
-    log_config["formatters"]["access"]["fmt"] = "%(levelprefix)s %(message)s"
+    # Import and run checks
+    import asyncio
 
-    # Pass settings through uvicorn.run; service layer can access via dependency (app.state later)
-    uvicorn.run(
-        "api_server.app:app",
-        host=settings.host,
-        port=settings.port,
-        reload=settings.reload,
-        log_level=str(settings.log_level).lower(),
-        log_config=log_config,
-    )
+    from api_server.app import perform_startup_checks
+
+    try:
+        asyncio.run(perform_startup_checks(settings))
+        logger.info("Readiness checks completed successfully")
+    except SystemExit:
+        raise
+    except Exception as e:
+        logger.error(f"Readiness checks failed: {e}")
+        raise SystemExit(1) from None
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     app()

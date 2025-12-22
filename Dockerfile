@@ -1,28 +1,62 @@
-FROM python:3.13-slim
-
-LABEL org.opencontainers.image.title="api-server-template"
-#LABEL org.opencontainers.image.version="latest"
+# Multi-stage build for api-server
+# Stage 1: Build the package
+FROM python:3.13 AS builder
 
 WORKDIR /app
 
-# Copy the source code and configuration files
-COPY src /app/src
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv and build dependencies
+RUN pip install --no-cache-dir uv
+
+# Copy source files
+COPY src/ /app/src/
+COPY pyproject.toml /app/
+
+# Build the package
+RUN uv pip install --system --no-cache-dir setuptools
+RUN uv pip install --system --no-cache-dir --no-build-isolation -e .
+RUN pip install --no-cache-dir build
+RUN python -m build
+
+# Stage 2: Runtime image
+FROM python:3.13-slim
+
+LABEL org.opencontainers.image.title="api-server"
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    procps \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install built package
+COPY --from=builder /app/dist /app/dist
+RUN pip install --no-cache-dir /app/dist/*.whl
+
+# Copy configuration files
 COPY migrations /app/migrations
-COPY pyproject.toml setup.py alembic.ini ./
+COPY alembic.ini /app/alembic.ini
 
-# Install uv and use it to install dependencies
-RUN pip install --no-cache-dir uv && uv pip install --system --no-cache-dir -e .
-
-# Expose port (default to 8080 if PORT is not set)
 EXPOSE 8080
 
 # Set environment variables
 ENV API_SERVER_HOST=0.0.0.0
+ENV API_SERVER_PORT=8080
 ENV API_SERVER_LOG_LEVEL=INFO
-#
-# The '-- ENV VAR_NAME{!}' is pocessed by docker-run.sh script
-# Required for database connection
-# -- ENV API_SERVER_DATABASE_URL!
 
-# Run the application
-CMD ["api-server", "--host=0.0.0.0", "--port=8080", "--no-reload"]
+# Required environment variables (must be set at runtime):
+#   API_SERVER_DATABASE_URL - Database connection URL
+#
+# Optional environment variables:
+#   API_SERVER_LOG_LEVEL - Log level (default: INFO)
+#   API_SERVER_PROFILES - Server profiles (rest, graphql)
+
+CMD ["api-server", "run", "--no-reload"]

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Server</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: white;
+            overflow: hidden;
+        }
+        .container {
+            text-align: center;
+            padding: 60px 80px;
+            border-radius: 12px;            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+        }
+        .text {
+            font-size: 64px;
+            position: relative;
+        }
+        .word-server {
+            opacity: 0;
+            animation: flyInLeft 1.2s ease-out forwards;
+            margin-right: 15px;
+        }
+        @keyframes flyInLeft {
+            0% {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        @keyframes flyInRight {
+            0% {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .text::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 0;
+            height: 3px;
+            background-color: black;
+            animation: underline 0.8s ease-out 1.5s forwards;
+        }
+        @keyframes underline {
+            to {
+                width: 100%;
+            }
+        }
+        .links {
+            font-size: 20px;
+            margin-top: 45px;
+            opacity: 0;
+            animation: fadeIn 0.8s ease-out 2s forwards;
+            letter-spacing: 0.5px;
+        }
+        .links a {
+            color: black;
+            text-decoration: none;
+            margin: 0 20px;
+            transition: opacity 0.2s;
+        }
+        .links a:hover {
+            opacity: 0.7;
+        }
+        .version {
+            font-size: 16px;
+            margin-top: 30px;
+            opacity: 0;
+            animation: fadeIn 0.8s ease-out 2.3s forwards;
+            color: #666;
+        }
+        .status {
+            font-size: 16px;
+            margin-top: 25px;
+            opacity: 0;
+            animation: fadeIn 0.8s ease-out 2.3s forwards;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-operational {
+            background-color: #4CAF50;
+        }
+        .status-checking {
+            background-color: #FFC107;
+        }
+        .status-starting {
+            background-color: #2196F3;
+        }
+        .status-error {
+            background-color: #F44336;
+        }
+        .status a {
+            color: inherit;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+        .status a:hover {
+            opacity: 0.7;
+        }
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="text">
+            <span class="word-server">API Server</span>
+        </div>
+        <div class="links">
+            {% if 'GraphQL' in profile %}
+            <a href="/graphql">/GraphQL</a>
+            {% endif %}
+            <a href="/docs">/OpenAPI-Documentation</a>
+        </div>
+        <div class="status">
+            <span class="status-indicator status-{{ server_state }}"></span>
+            <a href="/health-check">Status: {{ server_state }}</a>
+        </div>
+        <div class="version">
+            <span>Profile: {{ profile_display }}</span>
+            <br>
+            <a href="/version" style="color: #666; text-decoration: none;">Version {{ version }}</a>
+            {% if build_timestamp %}
+            <br>
+            <span class="build-timestamp">Built on {{ build_timestamp }}</span>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

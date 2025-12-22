@@ -24,14 +24,16 @@ Typical Usage:
         print("System is ready for traffic")
 """
 
-import time
-
+import arrow
 from loguru import logger
 
-from .base import CheckStatus, ReadinessCheck, ReadinessPipelineResult, ServerState
-from .calculator import ResultCalculator
-from .executor import PipelineExecutor
-from .stage import ReadinessStage, ReadinessStageResult
+from api_server.readiness_pipeline.base import ReadinessCheck
+from api_server.readiness_pipeline.calculator import ResultCalculator
+from api_server.readiness_pipeline.enums import CheckStatus, ServerState
+from api_server.readiness_pipeline.executor import PipelineExecutor
+from api_server.readiness_pipeline.models import ReadinessPipelineResult, ReadinessStageResult
+from api_server.readiness_pipeline.stage import ReadinessStage
+from api_server.state import get_server_state_registry
 
 
 class ReadinessPipeline:
@@ -64,7 +66,6 @@ class ReadinessPipeline:
         self.stages = stages
         self.current_state = ServerState.STARTING
         self.last_result: ReadinessPipelineResult | None = None
-        self.current_result: ReadinessPipelineResult | None = None  # Track in-progress execution
 
         # Initialize extracted components
         self._executor = PipelineExecutor()
@@ -84,22 +85,29 @@ class ReadinessPipeline:
             ReadinessPipelineResult: Complete pipeline execution result with
                 finalized server state and aggregated statistics
         """
+
         logger.info("Starting readiness pipeline execution")
-        start_time = time.time()
+        start_time = arrow.utcnow().float_timestamp
+        registry = get_server_state_registry()
 
         self.current_state = ServerState.CHECKING
+        registry.set_server_state(ServerState.CHECKING)
 
         # Use executor to run the pipeline
         result = self._executor.execute_pipeline(self.stages, force_rerun)
 
-        # Set current_result to track in-progress execution
-        self.current_result = result
+        # Update registry with stage results
+        for stage_result in result.stage_results:
+            registry.update_stage_status(stage_result.stage_name, stage_result.status, stage_result)
 
         # Use calculator to finalize the result
         result = self._calculator.finalize_result(result, start_time)
 
         self.current_state = result.server_state
         self.last_result = result
+
+        # Update final server state in registry
+        registry.set_server_state(result.server_state)
 
         logger.info(f"Pipeline completed with status {result.overall_status.value} and server state {result.server_state.value}")
         return result
@@ -164,41 +172,8 @@ class ReadinessPipeline:
 
         return next((stage_result for stage_result in last_result.stage_results if stage_result.stage_name == stage_name), None)
 
-    def _get_stage_result_from_any_source(self, stage_name: str) -> ReadinessStageResult | None:
-        """Get stage result from either current execution or final pipeline result.
-
-        Works both during pipeline execution (using current_result) and after completion (using last_result).
-
-        Args:
-            stage_name: Name of the stage to get result for
-
-        Returns:
-            The stage result if found from any source, None otherwise
-        """
-        # Check current execution result first (handles running pipeline)
-        if self.current_result:
-            stage_result = next(
-                (stage_result for stage_result in self.current_result.stage_results if stage_result.stage_name == stage_name),
-                None,
-            )
-            if stage_result is not None:
-                return stage_result
-
-        # Fall back to final pipeline result (handles completed pipeline)
-        if self.last_result:
-            return next(
-                (stage_result for stage_result in self.last_result.stage_results if stage_result.stage_name == stage_name),
-                None,
-            )
-
-        return None
-
     def is_stage_successful(self, stage_name: str) -> bool:
         """Check if a specific stage completed successfully.
-
-        This method works both during and after pipeline execution:
-        - During execution: checks the current stage result
-        - After execution: checks the final pipeline result
 
         Args:
             stage_name: Name of the stage to check
@@ -206,15 +181,11 @@ class ReadinessPipeline:
         Returns:
             True if stage was successful, False otherwise
         """
-        stage_result = self._get_stage_result_from_any_source(stage_name)
+        stage_result = self.get_stage_result(stage_name)
         return stage_result is not None and stage_result.status == CheckStatus.SUCCESS
 
     def get_stage_status(self, stage_name: str) -> CheckStatus | None:
         """Get the status of a specific stage.
-
-        This method works both during and after pipeline execution:
-        - During execution: checks the current stage status
-        - After execution: checks the final pipeline result
 
         Args:
             stage_name: Name of the stage to get status for
@@ -222,7 +193,7 @@ class ReadinessPipeline:
         Returns:
             The stage status if found, None otherwise
         """
-        stage_result = self._get_stage_result_from_any_source(stage_name)
+        stage_result = self.get_stage_result(stage_name)
         return stage_result.status if stage_result else None
 
     def get_check(self, check_name: str) -> tuple[ReadinessStage | None, ReadinessCheck | None]:

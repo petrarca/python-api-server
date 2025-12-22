@@ -1,6 +1,6 @@
 """Tests for self-check pipeline."""
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from api_server.readiness_pipeline import (
     CheckStatus,
@@ -179,26 +179,27 @@ class TestReadinessPipeline:
         result2 = pipeline.execute()
         assert result2 is not result1  # Different object
 
-    @patch("api_server.readiness_pipeline.calculator.time.time")
-    def test_pipeline_execution_timing(self, mock_calc_time):
+    @patch("api_server.readiness_pipeline.calculator.arrow.utcnow")
+    def test_pipeline_execution_timing(self, mock_calc_arrow):
         """Test that pipeline execution timing is recorded."""
         # Use a simple incrementing function for time with enough values
         time_values = iter([0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09])
 
-        def mock_time():
-            return next(time_values)
+        def mock_arrow():
+            timestamp = next(time_values)
+            return Mock(float_timestamp=timestamp, isoformat=lambda: f"2023-01-01T00:00:{timestamp:.2f}Z")
 
         check = MockReadinessCheck("check1")
         stage = ReadinessStage("stage1", "Stage 1").add_check(check)
         pipeline = ReadinessPipeline([stage])
 
-        # Patch all time.time() calls to use the same iterator
+        # Patch all arrow.utcnow() calls to use the same iterator
         with (
-            patch("api_server.readiness_pipeline.executor.time.time", side_effect=mock_time),
-            patch("api_server.readiness_pipeline.stage.time.time", side_effect=mock_time),
-            patch("api_server.readiness_pipeline.check_executor.time.time", side_effect=mock_time),
+            patch("api_server.readiness_pipeline.executor.arrow.utcnow", side_effect=mock_arrow),
+            patch("api_server.readiness_pipeline.stage.arrow.utcnow", side_effect=mock_arrow),
+            patch("api_server.readiness_pipeline.check_executor.arrow.utcnow", side_effect=mock_arrow),
         ):
-            mock_calc_time.return_value = 0.06
+            mock_calc_arrow.return_value = Mock(float_timestamp=0.06, isoformat=lambda: "2023-01-01T00:00:00Z")
             result = pipeline.execute()
 
         assert result.total_execution_time_ms is not None

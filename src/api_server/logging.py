@@ -38,12 +38,6 @@ def setup_logging(log_level: str):
     logger.remove()  # Remove default handler
     logger.add(
         sys.stderr,
-        #        format=(
-        #            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-        #            "<level>{level: <8}</level> | "
-        #            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-        #            "<level>{message}</level>"
-        #        ),
         level=log_level,
         colorize=True,
     )
@@ -54,15 +48,17 @@ def setup_logging(log_level: str):
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
     # Configure all existing loggers to use our handler
-    for name in logging.Logger.manager.loggerDict:
+    for name in logging.root.manager.loggerDict:
         logging_logger = logging.getLogger(name)
         logging_logger.handlers = [InterceptHandler()]
         logging_logger.propagate = False
 
     # Set third-party library loggers to the same level as the application
     # This gives consistent behavior - user controls all logging with one setting
+    # Map loguru's TRACE to Python logging's DEBUG (standard logging doesn't have TRACE)
+    stdlib_log_level = "DEBUG" if log_level == "TRACE" else log_level
     for noisy_logger in ("httpcore", "httpx", "openai", "urllib3", "asyncio", "api_server"):
-        logging.getLogger(noisy_logger).setLevel(log_level)
+        logging.getLogger(noisy_logger).setLevel(stdlib_log_level)
 
 
 def setup_sqlalchemy_logging():

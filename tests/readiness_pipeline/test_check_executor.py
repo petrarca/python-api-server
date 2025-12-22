@@ -1,6 +1,6 @@
 """Tests for CheckExecutor class."""
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from api_server.readiness_pipeline.base import CheckStatus, ReadinessCheck, ReadinessCheckResult
 from api_server.readiness_pipeline.check_executor import CheckExecutor
@@ -90,14 +90,18 @@ class TestCheckExecutor:
         assert result.details["type"] == "ValueError"
         assert check.execute_called is True
 
-    @patch("api_server.readiness_pipeline.check_executor.time.time")
-    def test_execute_check_timing(self, mock_time):
+    @patch("api_server.readiness_pipeline.check_executor.arrow.utcnow")
+    def test_execute_check_timing(self, mock_arrow):
         """Test that check execution timing is recorded correctly."""
         executor = CheckExecutor()
         check = MockReadinessCheck("timing_check")
 
-        # Mock timing: start at 0.0, end at 0.1 (100ms)
-        mock_time.side_effect = [0.0, 0.1]
+        # Mock timing: start at 0.0, end at 0.1 (100ms) - need 3 calls for timing
+        mock_arrow.side_effect = [
+            Mock(float_timestamp=0.0, isoformat=lambda: "2023-01-01T00:00:00Z"),  # start time
+            Mock(float_timestamp=0.1, isoformat=lambda: "2023-01-01T00:00:00Z"),  # end time
+            Mock(float_timestamp=0.1, isoformat=lambda: "2023-01-01T00:00:00Z"),  # timestamp for result
+        ]
 
         result = executor.execute_single_check(check, "test_stage")
 
@@ -143,8 +147,13 @@ class TestCheckExecutor:
         check = MockReadinessCheck("timing_error_check", should_raise=True)
 
         # Even if the check raises an exception, timing should still be calculated
-        with patch("api_server.readiness_pipeline.check_executor.time.time") as mock_time:
-            mock_time.side_effect = [0.0, 0.05]  # 50ms execution time
+        with patch("api_server.readiness_pipeline.check_executor.arrow.utcnow") as mock_arrow:
+            mock_arrow.side_effect = [
+                Mock(float_timestamp=0.0, isoformat=lambda: "2023-01-01T00:00:00Z"),  # start time
+                Mock(float_timestamp=0.05, isoformat=lambda: "2023-01-01T00:00:00Z"),  # end time
+                Mock(float_timestamp=0.05, isoformat=lambda: "2023-01-01T00:00:00Z"),  # timestamp for executed_at
+                Mock(float_timestamp=0.05, isoformat=lambda: "2023-01-01T00:00:00Z"),  # timestamp for execution_time_ms
+            ]  # 50ms execution time
 
             result = executor.execute_single_check(check, "test_stage")
 

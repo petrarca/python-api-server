@@ -9,9 +9,9 @@ Key Features:
 - Exception handling and conversion to failed results
 - Result enrichment with stage names and execution timestamps
 - Comprehensive logging for debugging and monitoring
-"""
+- Additional feature for improved logging
 
-import time
+"""
 
 import arrow
 from loguru import logger
@@ -65,18 +65,18 @@ class CheckExecutor:
             to failed results with appropriate error details.
         """
         logger.debug(f"Running check: {check.name}")
-        check_start_time = time.time()
+        check_start_time = arrow.utcnow().float_timestamp
         executed_at = arrow.utcnow().isoformat()
 
         try:
             check_result = check.run(force_rerun=force_rerun)
             check_result.executed_at = executed_at
-            check_result.execution_time_ms = (time.time() - check_start_time) * 1000
+            check_result.execution_time_ms = (arrow.utcnow().float_timestamp - check_start_time) * 1000
             # Add stage name for traceability
             check_result.stage_name = stage_name
             return check_result
 
-        except Exception as e:
+        except (ValueError, TypeError, RuntimeError, AttributeError) as e:
             return self._handle_check_exception(check, e, check_start_time, stage_name)
 
     def _handle_check_exception(
@@ -110,7 +110,7 @@ class CheckExecutor:
             message=f"Check execution failed: {str(e)}",
             check_name=check.name,
             stage_name=stage_name,  # Add stage name for traceability
-            execution_time_ms=(time.time() - check_start_time) * 1000,
+            execution_time_ms=(arrow.utcnow().float_timestamp - check_start_time) * 1000,
             executed_at=executed_at,
             details={"exception": str(e), "type": type(e).__name__},
         )

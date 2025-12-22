@@ -69,7 +69,7 @@ def get_addresses_by_patient(
     Returns:
         List of AddressResponse objects
     """
-    return address_service.get_addresses_by_patient(session, patient_id)
+    return address_service.get_addresses(session, patient_id)
 
 
 @router.post("/addresses", response_model=AddressCreateResponse, status_code=status.HTTP_201_CREATED)
