@@ -1,5 +1,9 @@
 """API models for API server."""
 
+from uuid import UUID
+
+from pydantic import BaseModel
+
 from api_server.models.base_model import AddressBase, PatientBase
 from api_server.utils.model_builder import create_model
 
@@ -51,3 +55,9 @@ AddressCreateInput = AddressInput
 
 # Address create response model
 AddressCreateResponse = AddressResponse
+
+
+class PrimaryAddressUpdate(BaseModel):
+    """Request body for updating a patient's primary address."""
+
+    address_id: UUID | None = None

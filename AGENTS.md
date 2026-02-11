@@ -162,34 +162,49 @@ from datetime import datetime
 user.created_at = datetime.utcnow()  # Deprecated since Python 3.12!
 ```
 
-## Model Architecture
+## Model Architecture Approach
 
 ### Three-Layer Model Separation
 
 **Clean separation between database schema and API contracts using three model layers:**
 
-#### 1. Base Models (`models/base_model.py`)
+#### **1. Base Models (`base_model.py`)**
 - **Purpose**: Shared fields and common functionality
 - **Usage**: Inherited by database models and API models
 - **Contains**: Audit fields, common constraints, shared validation
+- **Example**: `PatientBase` with `patient_id`, `first_name`, `last_name`
 
-#### 2. Database Models (`models/db_model.py`)
+#### **2. Database Models (`db_model.py`)**
 - **Purpose**: Database table definitions with SQLModel
 - **Usage**: Database operations, migrations, ORM queries
 - **Contains**: Primary keys, foreign keys, indexes, table-specific fields
-- **Note**: Uses `_uuid7()` for time-ordered UUIDs and `_utcnow()` for timestamps
+- **Example**: `class Patient(PatientBase, table=True)` with `id: UUID = Field(primary_key=True)`
 
-#### 3. API Models (`models/api_model.py`)
+#### **3. API Models (`api_model.py`)**
 - **Purpose**: Request/response validation and serialization
 - **Usage**: FastAPI endpoints, API documentation, client contracts
 - **Contains**: Input validation, response formatting, API-specific fields
-- **Note**: Uses `create_model` utility for consistency
+- **Examples**: 
+  - `PatientCreateInput` - POST request body
+  - `PatientResponse` - GET response body  
+  - `PatientInput` - PUT request body
 
-### Benefits
+### Benefits of This Approach
 - **Separation of Concerns**: Database schema != API contract
 - **Security**: API models expose only necessary fields
 - **Flexibility**: Can evolve API independently of database
 - **Validation**: Different validation rules for different contexts
+- **Documentation**: Auto-generated OpenAPI specs from API models
+
+### Model Implementation
+
+**Follow the established patterns in these modules:**
+- `models/base_model.py` - Base model definitions
+- `models/db_model.py` - Database table models  
+- `models/api_model.py` - API models using `create_model` utility
+- `utils/model_builder.py` - `create_model` implementation
+
+**Use `create_model` utility for API models to ensure consistency and maintain DRY principles.**
 
 ## CLI Architecture
 

@@ -20,6 +20,7 @@ from api_server.models.api_model import (
     PatientCreateResponse,
     PatientInput,
     PatientResponse,
+    PrimaryAddressUpdate,
 )
 from api_server.services.patient_service import PatientService, get_patient_service
 
@@ -186,7 +187,7 @@ def delete_patient(
 @router.put("/patients/{patient_id}/primary-address", response_model=dict)
 def update_primary_address(
     patient_id: UUID,
-    address_id: UUID | None,
+    body: PrimaryAddressUpdate,
     patient_service: PatientService = Depends(get_patient_service),
     session: Session = Depends(get_db_session),
 ) -> dict:
@@ -194,7 +195,7 @@ def update_primary_address(
 
     Args:
         patient_id: UUID of the patient to update
-        address_id: UUID of the new primary address (None to clear)
+        body: Request body containing address_id (UUID of new primary address, or null to clear)
         patient_service: Patient service instance
         session: Database session
 
@@ -204,6 +205,7 @@ def update_primary_address(
     Raises:
         HTTPException: If patient not found or update failed
     """
+    address_id = body.address_id
     updated_address_id = patient_service.update_primary_address(session, patient_id, address_id)
     if updated_address_id is None and address_id is not None:
         raise HTTPException(
