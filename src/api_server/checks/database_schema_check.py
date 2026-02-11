@@ -43,9 +43,9 @@ class DatabaseSchemaCheck(ReadinessCheck):
                 logger.info("Database schema validation passed")
                 return self.success(message, details)
             else:
-                logger.warning(f"Database schema validation failed: {message}")
+                logger.warning("Database schema validation failed: {}", message)
                 return self.failed(message, details)
 
         except (OSError, ValueError, RuntimeError, AttributeError) as e:
-            logger.error(f"Error checking database schema: {str(e)}")
+            logger.error("Error checking database schema: {}", str(e))
             return self.failed(f"Error checking database schema: {str(e)}", {"error": str(e), "type": type(e).__name__})

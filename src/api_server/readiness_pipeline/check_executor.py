@@ -64,7 +64,7 @@ class CheckExecutor:
             No exceptions are raised - all errors are captured and converted
             to failed results with appropriate error details.
         """
-        logger.debug(f"Running check: {check.name}")
+        logger.debug("Running check: {}", check.name)
         check_start_time = arrow.utcnow().float_timestamp
         executed_at = arrow.utcnow().isoformat()
 
@@ -115,5 +115,5 @@ class CheckExecutor:
             details={"exception": str(e), "type": type(e).__name__},
         )
 
-        logger.error(f"Check {check.name} threw exception: {e}")
+        logger.error("Check {} threw exception: {}", check.name, e)
         return error_result

@@ -37,7 +37,7 @@ def handle_transaction(session: Session, result: LoadResult, operation_name: str
         yield
     except Exception as e:
         session.rollback()
-        logger.error(f"{operation_name} failed with exception: {e}")
+        logger.error("{} failed with exception: {}", operation_name, e)
         result.failed += 1
         result.errors.append(f"Transaction error: {str(e)}")
         raise
@@ -46,17 +46,24 @@ def handle_transaction(session: Session, result: LoadResult, operation_name: str
         if result.failed == 0:
             session.commit()
             logger.info(
-                f"{operation_name} complete: {result.created} created, {result.updated} updated, {result.skipped} skipped"
+                "{} complete: {} created, {} updated, {} skipped",
+                operation_name,
+                result.created,
+                result.updated,
+                result.skipped,
             )
         else:
             session.rollback()
             logger.error(
-                f"{operation_name} failed: {result.failed} errors, transaction rolled back. "
-                f"Successful operations: {result.created} created, "
-                f"{result.updated} updated, {result.skipped} skipped"
+                "{} failed: {} errors, transaction rolled back. Successful operations: {} created, {} updated, {} skipped",
+                operation_name,
+                result.failed,
+                result.created,
+                result.updated,
+                result.skipped,
             )
             if result.errors:
-                logger.error(f"{operation_name} errors:\n" + "\n".join(f"  - {err}" for err in result.errors))
+                logger.error("{} errors:\n{}", operation_name, "\n".join(f"  - {err}" for err in result.errors))
 
 
 def should_update_from_mtime(file_mtime_timestamp: float, db_updated_at) -> bool:
@@ -111,10 +118,10 @@ def process_items_with_transaction(
     result = LoadResult()
 
     if not items:
-        logger.info(f"No items found for {operation_name.lower()}")
+        logger.info("No items found for {}", operation_name.lower())
         return result
 
-    logger.info(f"{operation_name}: processing {len(items)} items")
+    logger.info("{}: processing {} items", operation_name, len(items))
 
     with handle_transaction(session, result, operation_name):
         for item in items:

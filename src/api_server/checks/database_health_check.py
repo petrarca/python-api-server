@@ -70,7 +70,7 @@ class DatabaseHealthCheck(ReadinessCheck):
                 )
 
         except Exception as e:
-            logger.error(f"Error checking operational database connection: {str(e)}")
+            logger.error("Error checking operational database connection: {}", str(e))
             db_health = DatabaseHealth(error=str(e), connection="failed")
             return self.failed(
                 f"Error checking operational database connection: {str(e)}",

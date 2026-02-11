@@ -36,14 +36,14 @@ def _log_startup_check_results(health_result) -> None:
 
     if health_result.server_state == ServerState.ERROR:
         logger.error("Startup readiness checks failed - critical infrastructure issues")
-        logger.error(f"Server state: {health_result.server_state}")
+        logger.error("Server state: {}", health_result.server_state)
         raise SystemExit(1)
     elif health_result.server_state == ServerState.DEGRADED:
         logger.warning("Server starting in degraded state - some non-critical features unavailable")
-        logger.info(f"Server state: {health_result.server_state}")
+        logger.info("Server state: {}", health_result.server_state)
     else:  # OPERATIONAL
         logger.info("All startup readiness checks passed successfully")
-        logger.info(f"Server state: {health_result.server_state}")
+        logger.info("Server state: {}", health_result.server_state)
 
 
 def _log_server_endpoints_summary(settings: Settings, active_profiles: set[str]) -> None:
@@ -55,7 +55,7 @@ def _log_server_endpoints_summary(settings: Settings, active_profiles: set[str])
     """
     # Log the main server URL
     server_url = f"http://{settings.host}:{settings.port}"
-    logger.info(f"Server running at: {server_url}")
+    logger.info("Server running at: {}", server_url)
 
     # Collect all available endpoints
     endpoints = []
@@ -85,11 +85,11 @@ def _log_server_endpoints_summary(settings: Settings, active_profiles: set[str])
     logger.info("Available endpoints:")
     for name, path in endpoints:
         full_url = f"{server_url}{path}"
-        logger.info(f"   {name}: {full_url}")
+        logger.info("   {}: {}", name, full_url)
 
     # Log active profiles
     profile_display = ", ".join(sorted(active_profiles))
-    logger.info(f"Active profiles: {profile_display}")
+    logger.info("Active profiles: {}", profile_display)
 
 
 async def perform_startup_checks(app_settings: Settings) -> None:

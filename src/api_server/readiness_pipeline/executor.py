@@ -62,32 +62,32 @@ class PipelineExecutor:
 
         try:
             execution_order = self._get_execution_order(stages)
-            logger.info(f"Pipeline will execute {len(execution_order)} stages")
+            logger.info("Pipeline will execute {} stages", len(execution_order))
 
             for stage in execution_order:
-                logger.info(f"Executing stage: {stage.name}")
+                logger.info("Executing stage: {}", stage.name)
                 stage_result = stage.execute(force_rerun=force_rerun)
                 result.stage_results.append(stage_result)
 
                 # Log stage completion
                 if stage_result.status == CheckStatus.SUCCESS:
-                    logger.info(f"Stage {stage.name} completed successfully")
+                    logger.info("Stage {} completed successfully", stage.name)
                 elif stage_result.status == CheckStatus.SKIPPED:
-                    logger.info(f"Stage {stage.name} was skipped")
+                    logger.info("Stage {} was skipped", stage.name)
                 else:
-                    logger.warning(f"Stage {stage.name} failed")
+                    logger.warning("Stage {} failed", stage.name)
 
                 # Stop pipeline if critical stage fails
                 if stage.is_critical and stage_result.status == CheckStatus.FAILED:
                     result.overall_status = CheckStatus.FAILED
                     result.server_state = ServerState.ERROR
                     result.message = f"Critical stage '{stage.name}' failed"
-                    logger.error(f"Critical stage {stage.name} failed, stopping")
+                    logger.error("Critical stage {} failed, stopping", stage.name)
                     self._mark_remaining_stages_skipped(result, stage, stages)
                     break
 
         except (ValueError, TypeError, RuntimeError, AttributeError) as e:
-            logger.error(f"Pipeline execution failed with exception: {e}")
+            logger.error("Pipeline execution failed with exception: {}", e)
             result.overall_status = CheckStatus.FAILED
             result.server_state = ServerState.ERROR
             result.message = f"Pipeline execution failed: {str(e)}"
@@ -130,7 +130,7 @@ class PipelineExecutor:
         try:
             failed_index = next(i for i, stage in enumerate(all_stages) if stage == failed_stage)
         except StopIteration:
-            logger.warning(f"Could not find failed stage {failed_stage.name}")
+            logger.warning("Could not find failed stage {}", failed_stage.name)
             return
 
         # Mark remaining stages as skipped
@@ -144,4 +144,4 @@ class PipelineExecutor:
                 run_once=stage.run_once,
             )
             result.stage_results.append(skipped_result)
-            logger.info(f"Skipping stage {stage.name} due to critical failure")
+            logger.info("Skipping stage {} due to critical failure", stage.name)

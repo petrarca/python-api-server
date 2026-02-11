@@ -43,7 +43,7 @@ class DatabaseInitializationCheck(ReadinessCheck):
 
             return self.success("Operational database initialized successfully", {"initialized": True})
         except SQLAlchemyError as e:
-            logger.error(f"Operational database initialization failed: {str(e)}")
+            logger.error("Operational database initialization failed: {}", str(e))
             return self.failed(
                 f"Operational database initialization failed: {str(e)}",
                 {"error": str(e), "type": type(e).__name__, "initialized": False},

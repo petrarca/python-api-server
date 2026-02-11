@@ -52,7 +52,7 @@ def setup_logging(log_level: str):
         colorize=True,
     )
 
-    logger.info(f"Log level set to: {log_level}")
+    logger.info("Log level set to: {}", log_level)
 
     # Redirect all standard logging to loguru
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)

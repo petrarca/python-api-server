@@ -31,18 +31,18 @@ def get_version() -> VersionInfo:
             - build_timestamp: build timestamp (e.g., "2025-03-23T10:57:26Z" or None if not available)
     """
     try:
-        logger.trace(f"Python path: {sys.path}")
+        logger.trace("Python path: {}", sys.path)
         logger.trace("Attempting to import version from api_server.__version__")
         # The variable in __version__.py is named __version__, not version
         from api_server.__version__ import __version__ as full_version
 
-        logger.info(f"Successfully imported version: {full_version}")
+        logger.info("Successfully imported version: {}", full_version)
 
         # Parse the version string into components
         base_version, post_count, git_commit, is_dirty, build_timestamp = parse_version(full_version)
     except ImportError as e:
         # Fallback for development when __version__.py might not exist yet
-        logger.warning(f"Could not import __version__.py: {e}, using default version")
+        logger.warning("Could not import __version__.py: {}, using default version", e)
         full_version = "0.1.0-dev"
         base_version = full_version
         post_count = None

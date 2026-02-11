@@ -38,7 +38,7 @@ class PatientService:
         Returns:
             PatientResponse if found, None otherwise
         """
-        logger.debug(f"Service: get_patient_by_id with id_={id_}, patient_id={patient_id}")
+        logger.debug("Service: get_patient_by_id with id_={}, patient_id={}", id_, patient_id)
         if id_ is not None:
             stmt = select(PatientModel).where(PatientModel.id == id_)
         elif patient_id is not None:
@@ -47,7 +47,7 @@ class PatientService:
             return None
 
         patient = session.exec(stmt).first()
-        logger.debug(f"Service: get_patient_by_id result: {'found' if patient else 'not found'}")
+        logger.debug("Service: get_patient_by_id result: {}", "found" if patient else "not found")
 
         # Convert PatientModel to PatientResponse before returning
         return to_response_model(patient, PatientResponse)
@@ -63,14 +63,14 @@ class PatientService:
         Returns:
             UUID of the new primary address or None if update failed
         """
-        logger.debug(f"Service: update_primary_address with id={id_}, address_id={address_id}")
+        logger.debug("Service: update_primary_address with id={}, address_id={}", id_, address_id)
 
         # First, check if the patient exists and get the current primary_address_id for optimistic locking
         stmt = select(PatientModel.id, PatientModel.primary_address_id).where(PatientModel.id == id_)
         result = session.exec(stmt).first()
 
         if not result:
-            logger.warning(f"Service: update_primary_address - patient not found: {id_}")
+            logger.warning("Service: update_primary_address - patient not found: {}", id_)
             return None
 
         current_primary_address_id = result.primary_address_id
@@ -80,7 +80,7 @@ class PatientService:
             stmt = select(AddressModel.id).where((AddressModel.id == address_id) & (AddressModel.patient_id == id_))
             address = session.exec(stmt).first()
             if not address:
-                logger.warning(f"Service: update_primary_address - address not found or doesn't belong to patient: {address_id}")
+                logger.warning("Service: update_primary_address - address not found or doesn't belong to patient: {}", address_id)
                 return None
 
         # Update the primary address with optimistic locking using a direct UPDATE statement
@@ -98,7 +98,7 @@ class PatientService:
             logger.debug("Service: update_primary_address - optimistic lock failed, primary address may have changed")
             return None
 
-        logger.debug(f"Service: update_primary_address - successfully updated primary address to {address_id}")
+        logger.debug("Service: update_primary_address - successfully updated primary address to {}", address_id)
         return address_id
 
     def create_patient(self, session: Session, patient: PatientCreateInput) -> PatientCreateResponse | None:
@@ -111,7 +111,7 @@ class PatientService:
         Returns:
             PatientResponse object or None if creation failed
         """
-        logger.debug(f"Service: create_patient - creating patient with name {patient.first_name} {patient.last_name}")
+        logger.debug("Service: create_patient - creating patient with name {} {}", patient.first_name, patient.last_name)
 
         try:
             # Generate a unique patient_id if not provided
@@ -156,10 +156,10 @@ class PatientService:
 
             # Create the patient response
             patient_response = to_response_model(new_patient, PatientCreateResponse, {"addresses": AddressResponse})
-            logger.debug(f"Service: create_patient - successfully created patient with ID {new_patient.id}")
+            logger.debug("Service: create_patient - successfully created patient with ID {}", new_patient.id)
             return patient_response
         except Exception as e:
-            logger.error(f"Service: create_patient - failed to create patient: {e}")
+            logger.error("Service: create_patient - failed to create patient: {}", e)
             session.rollback()
             return None
 
@@ -174,7 +174,7 @@ class PatientService:
         Returns:
             PatientResponse object or None if update failed
         """
-        logger.debug(f"Service: update_patient with id={id_}")
+        logger.debug("Service: update_patient with id={}", id_)
 
         try:
             # Find the patient
@@ -182,7 +182,7 @@ class PatientService:
             existing_patient = session.exec(stmt).first()
 
             if not existing_patient:
-                logger.debug(f"Service: update_patient - patient not found: {id_}")
+                logger.debug("Service: update_patient - patient not found: {}", id_)
                 return None
 
             # Update all fields from the patient object, excluding None values
@@ -198,11 +198,11 @@ class PatientService:
             # Refresh the patient from the database
             session.refresh(existing_patient)
 
-            logger.debug(f"Service: update_patient - successfully updated patient {id_}")
+            logger.debug("Service: update_patient - successfully updated patient {}", id_)
             return to_response_model(existing_patient, PatientResponse)
 
         except Exception as e:
-            logger.error(f"Service: update_patient - failed to update patient: {e}")
+            logger.error("Service: update_patient - failed to update patient: {}", e)
             session.rollback()
             return None
 
@@ -216,7 +216,7 @@ class PatientService:
         Returns:
             True if patient was successfully deleted, False otherwise
         """
-        logger.debug(f"Service: delete_patient with id={id_}")
+        logger.debug("Service: delete_patient with id={}", id_)
 
         try:
             # Execute delete statement directly with where condition
@@ -229,14 +229,14 @@ class PatientService:
             # Check if any rows were affected
             rows_deleted = result.rowcount
             if rows_deleted == 0:
-                logger.debug(f"Service: delete_patient - patient not found: {id_}")
+                logger.debug("Service: delete_patient - patient not found: {}", id_)
                 return False
 
-            logger.debug(f"Service: delete_patient - successfully deleted patient {id_}")
+            logger.debug("Service: delete_patient - successfully deleted patient {}", id_)
             return True
 
         except Exception as e:
-            logger.error(f"Service: delete_patient - failed to delete patient: {e}")
+            logger.error("Service: delete_patient - failed to delete patient: {}", e)
             session.rollback()
             return False
 
@@ -250,18 +250,18 @@ class PatientService:
         Returns:
             List of PatientResponse objects
         """
-        logger.debug(f"Service: get_most_recent_changed_patients with limit={limit}")
+        logger.debug("Service: get_most_recent_changed_patients with limit={}", limit)
 
         try:
             # Query patients ordered by updated_at descending with limit
             stmt = select(PatientModel).order_by(PatientModel.updated_at.desc()).limit(limit)
             patients = session.exec(stmt).all()
 
-            logger.debug(f"Service: get_most_recent_changed_patients found {len(patients)} patients")
+            logger.debug("Service: get_most_recent_changed_patients found {} patients", len(patients))
             # Convert each PatientModel to PatientResponse
             return [to_response_model(patient, PatientResponse) for patient in patients]
         except Exception as e:
-            logger.error(f"Service: get_most_recent_changed_patients - failed to fetch patients: {e}")
+            logger.error("Service: get_most_recent_changed_patients - failed to fetch patients: {}", e)
             return []
 
 

@@ -1,9 +1,9 @@
 """Address service module."""
 
-import logging
 from functools import lru_cache
 from uuid import UUID
 
+from loguru import logger
 from sqlalchemy import delete
 from sqlmodel import Session, select
 
@@ -12,8 +12,6 @@ from api_server.models.db_model import Address as AddressModel
 from api_server.models.db_model import Patient as PatientModel
 from api_server.settings import Settings, get_settings
 from api_server.utils.model_converter import to_response_model
-
-logger = logging.getLogger(__name__)
 
 
 class AddressService:
@@ -51,7 +49,7 @@ class AddressService:
 
             return to_response_model(new_address, AddressResponse)
         except Exception as e:
-            logger.error(f"Service: create_address - failed to create address: {e}")
+            logger.error("Service: create_address - failed to create address: {}", e)
             session.rollback()
             return None
 
@@ -64,7 +62,7 @@ class AddressService:
             existing_address = session.exec(stmt).first()
 
             if not existing_address:
-                logger.debug(f"Service: update_address - address not found: {id_}")
+                logger.debug("Service: update_address - address not found: {}", id_)
                 return None
 
             # Update all fields from the address object, excluding patient_id
@@ -79,16 +77,16 @@ class AddressService:
             # Refresh the address from the database
             session.refresh(existing_address)
 
-            logger.debug(f"Service: update_address - successfully updated address {id_}")
+            logger.debug("Service: update_address - successfully updated address {}", id_)
             return to_response_model(existing_address, AddressResponse)
         except Exception as e:
-            logger.error(f"Service: update_address - failed to update address: {e}")
+            logger.error("Service: update_address - failed to update address: {}", e)
             session.rollback()
             return None
 
     def delete_address(self, session: Session, address_id: UUID) -> bool:
         """Delete an address."""
-        logger.debug(f"Service: delete_address with address_id={address_id}")
+        logger.debug("Service: delete_address with address_id={}", address_id)
 
         try:
             # First, find the patient_id for this address
@@ -96,7 +94,7 @@ class AddressService:
             result = session.exec(stmt).first()
 
             if not result:
-                logger.warning(f"Service: delete_address - address not found: {address_id}")
+                logger.warning("Service: delete_address - address not found: {}", address_id)
                 return False
 
             patient_id = result
@@ -108,7 +106,8 @@ class AddressService:
             # If this is the primary address, set primary_address_id to None
             if patient:
                 logger.debug(
-                    f"Service: delete_address - address {address_id} is the primary address, setting primary_address_id to None"
+                    "Service: delete_address - address {} is the primary address, setting primary_address_id to None",
+                    address_id,
                 )
                 patient.primary_address_id = None
                 session.add(patient)
@@ -119,13 +118,13 @@ class AddressService:
 
             # Check if any rows were affected
             if result.rowcount > 0:
-                logger.debug(f"Service: delete_address - successfully deleted address {address_id}")
+                logger.debug("Service: delete_address - successfully deleted address {}", address_id)
                 return True
             else:
-                logger.debug(f"Service: delete_address - address not found: {address_id}")
+                logger.debug("Service: delete_address - address not found: {}", address_id)
                 return False
         except Exception as e:
-            logger.error(f"Service: delete_address - failed to delete address: {e}")
+            logger.error("Service: delete_address - failed to delete address: {}", e)
             session.rollback()
             return False
 

@@ -60,19 +60,19 @@ def advisory_lock(lock: AdvisoryLock):
             # Only one process enters here
             perform_migration()
     """
-    logger.debug(f"Acquiring advisory lock '{lock.lock_name}' (key={lock.key})...")
+    logger.debug("Acquiring advisory lock '{}' (key={})...", lock.lock_name, lock.key)
     with borrow_db_session() as session:
         try:
             session.exec(text(f"SELECT pg_advisory_lock({lock.key})"))
-            logger.debug(f"Advisory lock '{lock.lock_name}' acquired")
+            logger.debug("Advisory lock '{}' acquired", lock.lock_name)
             try:
                 yield session
             finally:
-                logger.debug(f"Releasing advisory lock '{lock.lock_name}'...")
+                logger.debug("Releasing advisory lock '{}'...", lock.lock_name)
                 session.exec(text(f"SELECT pg_advisory_unlock({lock.key})"))
-                logger.debug(f"Advisory lock '{lock.lock_name}' released")
+                logger.debug("Advisory lock '{}' released", lock.lock_name)
         except Exception as e:
-            logger.error(f"Error during advisory lock '{lock.lock_name}': {e}")
+            logger.error("Error during advisory lock '{}': {}", lock.lock_name, e)
             raise
 
 
@@ -98,18 +98,18 @@ def try_advisory_lock(lock: AdvisoryLock):
                 # Another process has the lock, skip
                 logger.info("Skipping, another process holds the lock")
     """
-    logger.debug(f"Trying advisory lock '{lock.lock_name}' (key={lock.key})...")
+    logger.debug("Trying advisory lock '{}' (key={})...", lock.lock_name, lock.key)
     with borrow_db_session() as session:
         result = session.exec(text(f"SELECT pg_try_advisory_lock({lock.key})"))
         lock_acquired = result.scalar()
         if lock_acquired:
-            logger.debug(f"Advisory lock '{lock.lock_name}' acquired")
+            logger.debug("Advisory lock '{}' acquired", lock.lock_name)
             try:
                 yield session
             finally:
-                logger.debug(f"Releasing advisory lock '{lock.lock_name}'...")
+                logger.debug("Releasing advisory lock '{}'...", lock.lock_name)
                 session.exec(text(f"SELECT pg_advisory_unlock({lock.key})"))
-                logger.debug(f"Advisory lock '{lock.lock_name}' released")
+                logger.debug("Advisory lock '{}' released", lock.lock_name)
         else:
-            logger.debug(f"Advisory lock '{lock.lock_name}' not available (another process holds it)")
+            logger.debug("Advisory lock '{}' not available (another process holds it)", lock.lock_name)
             yield None

@@ -17,7 +17,7 @@ async def version_conflict_handler(request: Request, exc: VersionConflictError) 
     Returns HTTP 409 Conflict when a resource was modified by another client
     between read and update.
     """
-    logger.warning(f"Version conflict on {request.url.path}: {exc}")
+    logger.warning("Version conflict on {}: {}", request.url.path, exc)
     return JSONResponse(
         status_code=409,
         content={
@@ -36,7 +36,7 @@ async def resource_not_found_handler(request: Request, exc: ResourceNotFoundErro
 
     Returns HTTP 404 Not Found when a requested resource does not exist.
     """
-    logger.warning(f"Resource not found on {request.url.path}: {exc}")
+    logger.warning("Resource not found on {}: {}", request.url.path, exc)
     return JSONResponse(
         status_code=404,
         content={

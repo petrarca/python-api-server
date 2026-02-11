@@ -73,16 +73,16 @@ class ResultProcessor:
                 - stop_reason: Human-readable reason for stopping (empty if not stopping)
         """
         if check_result.status == CheckStatus.SUCCESS:
-            logger.debug(f"Check {check.name} passed")
+            logger.debug("Check {} passed", check.name)
             return False, ""
         elif check_result.status == CheckStatus.NOT_APPLICABLE:
-            logger.info(f"Check {check.name} not applicable: {check_result.message}")
+            logger.info("Check {} not applicable: {}", check.name, check_result.message)
             return False, ""
         elif check_result.status == CheckStatus.SKIP_STAGE:
-            logger.info(f"Check {check.name} requested stage skip: {check_result.message}")
+            logger.info("Check {} requested stage skip: {}", check.name, check_result.message)
             return True, f"Stage '{stage_name}' skipped due to check '{check.name}'"
         else:
-            logger.warning(f"Check {check.name} failed: {check_result.message}")
+            logger.warning("Check {} failed: {}", check.name, check_result.message)
             return self._should_stop_on_failure(check, stage_name, fail_fast)
 
     def _should_stop_on_failure(self, check: ReadinessCheck, stage_name: str, fail_fast: bool = False) -> tuple[bool, str]:
@@ -98,12 +98,12 @@ class ResultProcessor:
         """
         # Stop stage execution if critical check fails
         if check.is_critical:
-            logger.error(f"Critical check {check.name} failed, stopping stage")
+            logger.error("Critical check {} failed, stopping stage", check.name)
             return True, f"Critical check '{check.name}' failed in stage '{stage_name}'"
 
         # Stop stage execution on first failure if fail_fast is enabled
         if fail_fast:
-            logger.warning(f"Stage failing fast due to {check.name}")
+            logger.warning("Stage failing fast due to {}", check.name)
             return True, f"Stage '{stage_name}' failed on check '{check.name}'"
 
         return False, ""
@@ -148,7 +148,7 @@ class ResultProcessor:
             failed_index = next(i for i, check in enumerate(all_checks) if check == failed_check)
         except StopIteration:
             # This shouldn't happen, but handle gracefully
-            logger.warning(f"Could not find check {failed_check.name}")
+            logger.warning("Could not find check {}", failed_check.name)
             return
 
         # Mark remaining checks as skipped
@@ -161,4 +161,4 @@ class ResultProcessor:
             )
             result.check_results.append(skipped_result)
             result.skipped_checks += 1
-            logger.debug(f"Skipping check {check.name} {reason}")
+            logger.debug("Skipping check {} {}", check.name, reason)

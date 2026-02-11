@@ -43,6 +43,26 @@ def get_your_service() -> YourService:
 - `PatientService` - `get_patient_service()`
 - `AddressService` - `get_address_service()`
 
+## Logging
+
+### Use loguru's `{}` placeholder format
+
+**Use loguru's `{}` placeholder format instead of f-strings for all logging calls** (e.g., `logger.debug("Processing {}", value)` not `logger.debug(f"Processing {value}")`).
+
+This is loguru's native format and provides lazy evaluation — the string is only formatted if the message will actually be emitted. With f-strings, Python evaluates the string before the logging call, wasting CPU when the log level is disabled.
+
+#### Good:
+```python
+logger.info("User {} logged in from {}", username, ip_address)
+logger.error("Failed to process request: {}", error)
+```
+
+#### Bad:
+```python
+logger.info(f"User {username} logged in from {ip_address}")
+logger.error(f"Failed to process request: {error}")
+```
+
 ## Error Handling Patterns
 
 ### Specific Exception Handling
@@ -54,7 +74,7 @@ def get_your_service() -> YourService:
 try:
     service.create_resource(session, input_data)
 except (ResourceNotFoundError, VersionConflictError, ValueError, RuntimeError) as e:
-    logger.warning(f"Failed to create resource: {e}")
+    logger.warning("Failed to create resource: {}", e)
     return False
 ```
 

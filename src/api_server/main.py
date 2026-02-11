@@ -108,10 +108,10 @@ def _prepare_and_log_settings(
     settings = get_settings()
     setup_logging(settings.log_level)
 
-    logger.info(f"Log level: {settings.log_level}")
+    logger.info("Log level: {}", settings.log_level)
 
     if settings.log_level in {"DEBUG", "TRACE"}:
-        logger.debug(f"Effective settings: {settings.model_dump()}")
+        logger.debug("Effective settings: {}", settings.model_dump())
 
 
 def _run_server(
@@ -127,7 +127,7 @@ def _run_server(
     _prepare_and_log_settings(host, port, log_level, reload, sql_log, database_url, profile)
 
     settings = get_settings()
-    logger.info(f"Starting API server at http://{settings.host}:{settings.port}")
+    logger.info("Starting API server at http://{}:{}", settings.host, settings.port)
 
     uvicorn.run(
         "api_server.app:app",

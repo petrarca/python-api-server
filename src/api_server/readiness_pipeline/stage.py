@@ -171,7 +171,7 @@ class ReadinessStage:
             ReadinessStageResult: Result of executing this stage
         """
         if not force_rerun and self.run_once and self._executed_once and self._last_result is not None:
-            logger.debug(f"Skipping stage '{self.name}' - already executed (run_once=True)")
+            logger.debug("Skipping stage '{}' - already executed (run_once=True)", self.name)
             return self._last_result
 
         result = self._execute_stage(force_rerun)
@@ -198,7 +198,7 @@ class ReadinessStage:
         Args:
             force_rerun: If True, pass to checks to ignore their run_once cache
         """
-        logger.info(f"Executing pipeline stage: {self.name}")
+        logger.info("Executing pipeline stage: {}", self.name)
         start_time = arrow.utcnow().float_timestamp
         executed_at = arrow.utcnow().isoformat()
 
@@ -220,7 +220,7 @@ class ReadinessStage:
         self._result_processor.finalize_stage_result(result, self.name)
 
         result.execution_time_ms = (arrow.utcnow().float_timestamp - start_time) * 1000
-        logger.info(f"Stage {self.name} completed with status {result.status.value} in {result.execution_time_ms:.1f}ms")
+        logger.info("Stage {} completed with status {} in {:.1f}ms", self.name, result.status.value, result.execution_time_ms)
         return result
 
     def _execute_single_check(self, check: ReadinessCheck, result: ReadinessStageResult, force_rerun: bool = False) -> bool:

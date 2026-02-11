@@ -140,7 +140,7 @@ class ResultCalculator:
                 else:
                     result.server_state = ServerState.ERROR
                 result.message = f"Pipeline completed with {result.failed_checks} check failures"
-                logger.warning(f"Pipeline completed with {result.failed_checks} failures")
+                logger.warning("Pipeline completed with {} failures", result.failed_checks)
 
         result.total_execution_time_ms = (arrow.utcnow().float_timestamp - start_time) * 1000
         return result

@@ -22,8 +22,8 @@ class PatientCreatedEventHandler(EventHandler[PatientCreatedEvent]):
         Args:
             event: The patient created event containing patient information
         """
-        logger.info(f"🎉 New patient created: {event.patient_name} (ID: {event.patient_id})")
-        logger.info(f"   Created at: {event.created_at}")
+        logger.info("New patient created: {} (ID: {})", event.patient_name, event.patient_id)
+        logger.info("   Created at: {}", event.created_at)
 
         # Here you could add additional logic like:
         # - Sending notifications

@@ -52,7 +52,7 @@ def build_db_basic_pipeline():
     return builder.build()
 
 
-def build_db_check_pipeline() -> ReadinessPipelineBuilder:
+def build_db_check_pipeline():
     """Build readiness pipeline for database check operations.
 
     Validates database connection, health, and schema status (no migrations).

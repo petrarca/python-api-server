@@ -48,7 +48,7 @@ class ReadinessCheck(ABC):
         if not force_rerun and self.run_once and self._executed_once and self._last_result is not None:
             from loguru import logger
 
-            logger.debug(f"Skipping check '{self.name}' - already executed (run_once=True)")
+            logger.debug("Skipping check '{}' - already executed (run_once=True)", self.name)
             return self._last_result
 
         result = self._execute()

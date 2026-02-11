@@ -101,7 +101,7 @@ async def trigger_health_check(
         - Checks with run_once=True will return cached results unless force_rerun=True
         - Checks with run_once=False will always execute fresh
     """
-    logger.info(f"Health check execution triggered via POST (force_rerun={force_rerun})")
+    logger.info("Health check execution triggered via POST (force_rerun={})", force_rerun)
 
     # Execute pipeline and return fresh results
     return health_service.perform_health_check(force_rerun=force_rerun)

@@ -35,7 +35,7 @@ class AlembicSetupCheck(ReadinessCheck):
                 logger.debug("Creating fresh Inspector instance to check table existence")
                 inspector = inspect(session.get_bind())
                 has_alembic_table = inspector.has_table("alembic_version")
-                logger.debug(f"Inspector.has_table('alembic_version') returned: {has_alembic_table}")
+                logger.debug("Inspector.has_table('alembic_version') returned: {}", has_alembic_table)
 
                 if has_alembic_table:
                     logger.debug("Table exists, checking for version data")
@@ -54,5 +54,5 @@ class AlembicSetupCheck(ReadinessCheck):
                     msg = "Database is not set up with alembic (table not found)"
                     return self.failed(msg, {"has_alembic_table": False})
         except Exception as e:
-            logger.error(f"Error checking alembic setup: {str(e)}")
+            logger.error("Error checking alembic setup: {}", str(e))
             return self.failed(f"Error checking alembic setup: {str(e)}", {"error": str(e), "type": type(e).__name__})

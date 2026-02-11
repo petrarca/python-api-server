@@ -98,7 +98,7 @@ class EventBus:
         self._handlers: dict[type[BaseModel], list[T_Handler]] = {}
         self._isolate_events = isolate_events
         self._sync_executor: concurrent.futures.ThreadPoolExecutor | None = None
-        logger.debug(f"EventBus initialized (isolate_events={isolate_events})")
+        logger.debug("EventBus initialized (isolate_events={})", isolate_events)
 
     def on(self, event_type: type[T_Event], handler: T_Handler) -> None:
         """Register a handler for an event type.
@@ -123,14 +123,14 @@ class EventBus:
             self._handlers[event_type] = []
 
         self._handlers[event_type].append(handler)
-        logger.debug(f"Registered handler for {event_type.__name__}: {handler}")
+        logger.debug("Registered handler for {}: {}", event_type.__name__, handler)
 
     def remove_handler(self, event_type: type[T_Event], handler: T_Handler) -> bool:
         """Remove a specific handler for an event type."""
         if event_type in self._handlers:
             try:
                 self._handlers[event_type].remove(handler)
-                logger.debug(f"Removed handler for {event_type.__name__}: {handler}")
+                logger.debug("Removed handler for {}: {}", event_type.__name__, handler)
                 return True
             except ValueError:
                 pass
@@ -143,7 +143,7 @@ class EventBus:
             logger.debug("Cleared all handlers")
         elif event_type in self._handlers:
             del self._handlers[event_type]
-            logger.debug(f"Cleared handlers for {event_type.__name__}")
+            logger.debug("Cleared handlers for {}", event_type.__name__)
 
     def get_handler_count(self, event_type: type[T_Event]) -> int:
         """Get the number of handlers registered for an event type."""
@@ -237,34 +237,34 @@ class EventBus:
         handlers = self._handlers.get(event_type, [])
 
         if not handlers:
-            logger.debug(f"No handlers registered for {event_type.__name__}")
+            logger.debug("No handlers registered for {}", event_type.__name__)
             return []
 
-        logger.debug(f"Emitting {event_type.__name__} to {len(handlers)} handlers")
+        logger.debug("Emitting {} to {} handlers", event_type.__name__, len(handlers))
 
         # Determine if events should be isolated (copied for each handler)
         should_isolate = isolate if isolate is not None else self._isolate_events
-        logger.trace(f"Event isolation: {should_isolate} (isolate={isolate}, bus_default={self._isolate_events})")
+        logger.trace("Event isolation: {} (isolate={}, bus_default={})", should_isolate, isolate, self._isolate_events)
 
         # Execute all handlers concurrently
         tasks = []
         for i, handler in enumerate(handlers):
             # If isolating, create a deep copy for each handler
             handler_event = event.model_copy(deep=True) if should_isolate else event
-            logger.trace(f"Creating task for handler {i + 1}/{len(handlers)}: {handler}")
+            logger.trace("Creating task for handler {}/{}: {}", i + 1, len(handlers), handler)
             task = self._execute_handler(handler, handler_event)
             tasks.append(task)
 
-        logger.trace(f"Executing {len(tasks)} handlers concurrently")
+        logger.trace("Executing {} handlers concurrently", len(tasks))
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        logger.debug(f"Event {event_type.__name__} processed, {len(results)} results")
+        logger.debug("Event {} processed, {} results", event_type.__name__, len(results))
 
         # Log result summary
         successful = sum(1 for r in results if not isinstance(r, Exception))
         failed = len(results) - successful
         if failed > 0:
-            logger.warning(f"Event {event_type.__name__}: {successful} successful, {failed} failed handlers")
-        logger.trace(f"Event {event_type.__name__} results: {results}")
+            logger.warning("Event {}: {} successful, {} failed handlers", event_type.__name__, successful, failed)
+        logger.trace("Event {} results: {}", event_type.__name__, results)
 
         return results
 
@@ -279,7 +279,7 @@ class EventBus:
             The handler's result or any exception raised
         """
         try:
-            logger.trace(f"Executing handler {handler} for event {type(event).__name__}")
+            logger.trace("Executing handler {} for event {}", handler, type(event).__name__)
 
             # If handler is a class, instantiate it with DI and call handle method
             if inspect.isclass(handler):
@@ -292,13 +292,13 @@ class EventBus:
             # For function handlers, check if they accept dependencies
             sig = inspect.signature(handler)
             parameters = list(sig.parameters.values())
-            logger.trace(f"Handler signature: {sig}")
+            logger.trace("Handler signature: {}", sig)
 
             # If handler only takes the event, call directly
             if len(parameters) <= 1:
-                logger.trace(f"Calling handler {handler} with event only")
+                logger.trace("Calling handler {} with event only", handler)
                 result = await handler(event)
-                logger.trace(f"Handler {handler} completed successfully")
+                logger.trace("Handler {} completed successfully", handler)
                 return result
 
             # Try to inject dependencies from ServiceRegistry
@@ -314,21 +314,21 @@ class EventBus:
                         if param.annotation != inspect.Parameter.empty:
                             service = registry.get(param.annotation)
                             kwargs[param.name] = service
-                            logger.trace(f"Injected service '{param.annotation.__name__}' for handler {handler}")
+                            logger.trace("Injected service '{}' for handler {}", param.annotation.__name__, handler)
                     except KeyError, AttributeError:
-                        logger.trace(f"Service '{param.annotation}' not found in registry for handler {handler}")
+                        logger.trace("Service '{}' not found in registry for handler {}", param.annotation, handler)
 
             except ImportError:
                 logger.trace("ServiceRegistry not available, running without DI")
 
-            logger.trace(f"Calling handler {handler} with event and {len(kwargs)} dependencies")
+            logger.trace("Calling handler {} with event and {} dependencies", handler, len(kwargs))
             result = await handler(event, **kwargs)
-            logger.trace(f"Handler {handler} completed successfully")
+            logger.trace("Handler {} completed successfully", handler)
             return result
 
         except (ValueError, TypeError, RuntimeError, AttributeError) as e:
-            logger.error(f"Handler {handler} failed: {e}")
-            logger.trace(f"Handler {handler} exception details: {type(e).__name__}: {e}")
+            logger.error("Handler {} failed: {}", handler, e)
+            logger.trace("Handler {} exception details: {}: {}", handler, type(e).__name__, e)
             return e
 
     def _instantiate_handler_class(self, handler_class: type) -> Any:
@@ -363,10 +363,10 @@ class EventBus:
                             service = registry.get(param.annotation)
                             kwargs[param.name] = service
                             logger.trace(
-                                f"Injected service '{param.annotation.__name__}' into handler class {handler_class.__name__}"
+                                "Injected service '{}' into handler class {}", param.annotation.__name__, handler_class.__name__
                             )
                     except KeyError, AttributeError:
-                        logger.trace(f"Service '{param.annotation}' not found for handler class {handler_class.__name__}")
+                        logger.trace("Service '{}' not found for handler class {}", param.annotation, handler_class.__name__)
 
             except ImportError:
                 logger.trace("ServiceRegistry not available, instantiating without DI")
@@ -374,7 +374,7 @@ class EventBus:
             return handler_class(**kwargs)
 
         except (ValueError, TypeError, RuntimeError, AttributeError) as e:
-            logger.error(f"Failed to instantiate handler class {handler_class.__name__}: {e}")
+            logger.error("Failed to instantiate handler class {}: {}", handler_class.__name__, e)
             raise
 
 

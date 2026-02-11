@@ -39,7 +39,7 @@ def _build_engine():  # type: ignore[return-value]
         echo=settings.sql_log,
         connect_args=connect_args,
     )
-    logger.info(f"SQL echo is {'enabled' if settings.sql_log else 'disabled'}")
+    logger.info("SQL echo is {}", "enabled" if settings.sql_log else "disabled")
     return engine_local
 
 
@@ -108,7 +108,7 @@ def _create_session() -> Session:
             logger.warning("Database connection failed, disposing engine for retry...")
             _engine.dispose()
             _engine = None
-        logger.error(f"Failed to create database session: {e}")
+        logger.error("Failed to create database session: {}", e)
         raise
 
 
@@ -136,11 +136,11 @@ def borrow_db_session() -> Generator[Session]:
     try:
         yield session
     except Exception as e:  # noqa: BLE001
-        logger.error(f"Error during database session {session_id}: {e}")
+        logger.error("Error during database session {}: {}", session_id, e)
         raise
     finally:
         session.close()
-        logger.trace(f"Database session {session_id} closed and resources released")
+        logger.trace("Database session {} closed and resources released", session_id)
 
 
 def get_db_session() -> Session:

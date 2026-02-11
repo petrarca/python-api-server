@@ -87,7 +87,7 @@ class HealthCheckService:
         try:
             return self._run_self_checks(force_rerun=force_rerun)
         except Exception as e:  # pragma: no cover - defensive path
-            logger.warning(f"Health check failed: {str(e)}")
+            logger.warning("Health check failed: {}", e)
             return HealthCheckResult(status="error", server_state=ServerState.ERROR, version_info={}, checks=[])
 
     def _run_self_checks(self, force_rerun: bool = False) -> HealthCheckResult:
@@ -107,7 +107,7 @@ class HealthCheckService:
             return self._to_health_check_response(result)
 
         except Exception as e:  # pragma: no cover - defensive
-            logger.error(f"Error running server readiness checks: {str(e)}")
+            logger.error("Error running server readiness checks: {}", e)
             return self._health_check_failed()
 
     def _health_check_failed(self) -> HealthCheckResult:

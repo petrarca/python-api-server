@@ -38,7 +38,7 @@ class Query:
         Returns:
             Patient object if found, None otherwise
         """
-        logger.debug(f"GraphQL query: patient with id={id}, patient_id={patient_id}")
+        logger.debug("GraphQL query: patient with id={}, patient_id={}", id, patient_id)
         from api_server.services.patient_service import PatientService
 
         patient_service = info.context.service(PatientService)
@@ -57,7 +57,7 @@ class Query:
         Returns:
             List of Address objects associated with the patient
         """
-        logger.debug(f"GraphQL query: addresses with id={patient_id}")
+        logger.debug("GraphQL query: addresses with id={}", patient_id)
 
         address_service = info.context.service(AddressService)
         session = info.context.db_session
@@ -74,7 +74,7 @@ class Query:
         Returns:
             List of most recently updated Patient objects
         """
-        logger.debug(f"GraphQL query: most_recent_patients with limit={limit}")
+        logger.debug("GraphQL query: most_recent_patients with limit={}", limit)
 
         patient_service = info.context.service(PatientService)
         session = info.context.db_session
@@ -99,7 +99,7 @@ class Mutation:
         Returns:
             ID of the updated primary address, or None if not updated
         """
-        logger.debug(f"GraphQL mutation: update_primary_address with patient_id={id}, address_id={address_id}")
+        logger.debug("GraphQL mutation: update_primary_address with patient_id={}, address_id={}", id, address_id)
 
         patient_service = info.context.service(PatientService)
         session = info.context.db_session
@@ -111,7 +111,7 @@ class Mutation:
         # Update the primary address
         result_address_id = patient_service.update_primary_address(session, patient_uuid, address_uuid)
 
-        logger.debug(f"GraphQL mutation result: update_primary_address returned {result_address_id}")
+        logger.debug("GraphQL mutation result: update_primary_address returned {}", result_address_id)
         # Convert UUID back to string ID for GraphQL response
         return str(result_address_id) if result_address_id is not None else None
 
@@ -140,7 +140,7 @@ class Mutation:
         # Create the address
         result = address_service.create_address(session, address.to_pydantic())
 
-        logger.debug(f"GraphQL mutation result: create_address returned {result}")
+        logger.debug("GraphQL mutation result: create_address returned {}", result)
         return result
 
     @strawberry.mutation
@@ -160,7 +160,7 @@ class Mutation:
         Returns:
             Updated Address object, or None if update failed
         """
-        logger.debug(f"GraphQL mutation: update_address with address_id={address_id}")
+        logger.debug("GraphQL mutation: update_address with address_id={}", address_id)
 
         address_service = info.context.service(AddressService)
         session = info.context.db_session
@@ -171,7 +171,7 @@ class Mutation:
         # Update the address
         result = address_service.update_address(session, address_uuid, address.to_pydantic())
 
-        logger.debug(f"GraphQL mutation result: update_address returned {result}")
+        logger.debug("GraphQL mutation result: update_address returned {}", result)
         return result
 
     @strawberry.mutation
@@ -185,7 +185,7 @@ class Mutation:
         Returns:
             True if deletion was successful, False otherwise
         """
-        logger.debug(f"GraphQL mutation: delete_address with address_id={address_id}")
+        logger.debug("GraphQL mutation: delete_address with address_id={}", address_id)
 
         address_service = info.context.service(AddressService)
         session = info.context.db_session
@@ -196,7 +196,7 @@ class Mutation:
         # Delete the address
         result = address_service.delete_address(session, address_uuid)
 
-        logger.debug(f"GraphQL mutation result: delete_address returned {result}")
+        logger.debug("GraphQL mutation result: delete_address returned {}", result)
         return result
 
     @strawberry.mutation
@@ -222,7 +222,7 @@ class Mutation:
         # Convert to pydantic model and create patient
         result = patient_service.create_patient(session, patient.to_pydantic())
 
-        logger.debug(f"GraphQL mutation result: create_patient returned {result}")
+        logger.debug("GraphQL mutation result: create_patient returned {}", result)
         return result
 
     @strawberry.mutation
@@ -242,7 +242,7 @@ class Mutation:
         Returns:
             Updated Patient object, or None if update failed
         """
-        logger.debug(f"GraphQL mutation: update_patient with id={id}")
+        logger.debug("GraphQL mutation: update_patient with id={}", id)
 
         patient_service = info.context.service(PatientService)
         session = info.context.db_session
@@ -253,7 +253,7 @@ class Mutation:
         # Convert to pydantic model and then update
         result = patient_service.update_patient(session, id_, patient.to_pydantic())
 
-        logger.debug(f"GraphQL mutation result: update_patient returned {result}")
+        logger.debug("GraphQL mutation result: update_patient returned {}", result)
         return result
 
     @strawberry.mutation
@@ -271,7 +271,7 @@ class Mutation:
         Returns:
             True if deletion was successful, False otherwise
         """
-        logger.debug(f"GraphQL mutation: delete_patient with id={id}")
+        logger.debug("GraphQL mutation: delete_patient with id={}", id)
 
         patient_service = info.context.service(PatientService)
         session = info.context.db_session
@@ -282,7 +282,7 @@ class Mutation:
         # Delete the patient
         result = patient_service.delete_patient(session, id_)
 
-        logger.debug(f"GraphQL mutation result: delete_patient returned {result}")
+        logger.debug("GraphQL mutation result: delete_patient returned {}", result)
         return result
 
 

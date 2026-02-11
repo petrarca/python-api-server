@@ -109,7 +109,9 @@ class ReadinessPipeline:
         # Update final server state in registry
         registry.set_server_state(result.server_state)
 
-        logger.info(f"Pipeline completed with status {result.overall_status.value} and server state {result.server_state.value}")
+        logger.info(
+            "Pipeline completed with status {} and server state {}", result.overall_status.value, result.server_state.value
+        )
         return result
 
     def rerun(self) -> ReadinessPipelineResult:

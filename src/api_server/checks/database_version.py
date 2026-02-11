@@ -27,7 +27,7 @@ class DatabaseVersionCheck(ReadinessCheck):
             alembic_ini_path = os.path.join(os.getcwd(), "alembic.ini")
             self.alembic_cfg = alembic.config.Config(alembic_ini_path)
         except Exception as e:
-            logger.error(f"Failed to initialize alembic configuration: {str(e)}")
+            logger.error("Failed to initialize alembic configuration: {}", str(e))
             self.alembic_cfg = None
 
     def _execute(self) -> ReadinessCheckResult:
@@ -62,5 +62,5 @@ class DatabaseVersionCheck(ReadinessCheck):
                         {"current_revision": current_rev, "head_revision": head_rev, "is_latest": False},
                     )
         except Exception as e:
-            logger.error(f"Error checking database version: {e}")
+            logger.error("Error checking database version: {}", e)
             return self.failed(f"Error checking database version: {str(e)}", {"error": str(e), "type": type(e).__name__})

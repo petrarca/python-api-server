@@ -62,7 +62,7 @@ class ServerSelfCheck:
         try:
             self.alembic_cfg = alembic.config.Config(os.path.join(os.getcwd(), "alembic.ini"))
         except Exception as e:
-            logger.error(f"Failed to initialize alembic configuration: {str(e)}")
+            logger.error("Failed to initialize alembic configuration: {}", str(e))
 
     def run_self_checks(self, session: Session) -> bool:
         """Run all self-checks in the specified order.
@@ -172,7 +172,7 @@ class ServerSelfCheck:
                 success=False, message=f"{failure_message}: {str(e)}", details={"error": str(e)}, check=check_function.__name__
             )
             self.check_results.append(error_result)
-            logger.warning(f"{failure_message}: {str(e)}")
+            logger.warning("{}: {}", failure_message, str(e))
             return False
 
     def check_database_connection(self, session: Session) -> CheckResult:
@@ -199,7 +199,7 @@ class ServerSelfCheck:
                     check="database_connection",
                 )
         except Exception as e:
-            logger.error(f"Error checking database connection: {str(e)}")
+            logger.error("Error checking database connection: {}", str(e))
             return CheckResult(
                 success=False,
                 message=f"Error checking database connection: {str(e)}",
@@ -249,7 +249,7 @@ class ServerSelfCheck:
                     check="alembic_setup",
                 )
         except Exception as e:
-            logger.error(f"Error checking alembic setup: {str(e)}")
+            logger.error("Error checking alembic setup: {}", str(e))
             return CheckResult(
                 success=False, message=f"Error checking alembic setup: {str(e)}", details={"error": str(e)}, check="alembic_setup"
             )
@@ -297,7 +297,7 @@ class ServerSelfCheck:
                     check="database_version",
                 )
         except Exception as e:
-            logger.error(f"Error checking database version: {e}")
+            logger.error("Error checking database version: {}", e)
             return CheckResult(
                 success=False,
                 message=f"Error checking database version: {e}",

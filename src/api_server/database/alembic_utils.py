@@ -55,16 +55,16 @@ class AlembicManager:
                 self.alembic_cfg = None
                 return
 
-            logger.trace(f"Loading alembic configuration from: {alembic_ini_path}")
+            logger.trace("Loading alembic configuration from: {}", alembic_ini_path)
             self.alembic_cfg = alembic.config.Config(alembic_ini_path)
 
             # Override script_location with absolute path so it works from any directory
             migrations_path = os.path.join(server_root, "migrations")
             if os.path.exists(migrations_path):
                 self.alembic_cfg.set_main_option("script_location", migrations_path)
-                logger.trace(f"Set migrations path to: {migrations_path}")
+                logger.trace("Set migrations path to: {}", migrations_path)
         except (OSError, ValueError, RuntimeError) as e:
-            logger.error(f"Failed to initialize alembic configuration: {str(e)}")
+            logger.error("Failed to initialize alembic configuration: {}", str(e))
             self.alembic_cfg = None
 
     def get_current_revision(self) -> str | None:
@@ -96,10 +96,10 @@ class AlembicManager:
                     else:
                         current_rev = str(current_rev)
 
-                logger.trace(f"Current database revision: {current_rev}")
+                logger.trace("Current database revision: {}", current_rev)
                 return current_rev
             except (SQLAlchemyError, ValueError, RuntimeError, AttributeError) as e:
-                logger.error(f"Failed to get current revision: {str(e)}")
+                logger.error("Failed to get current revision: {}", str(e))
                 return None
 
     def get_head_revision(self) -> str:
@@ -111,10 +111,10 @@ class AlembicManager:
         try:
             script_directory = ScriptDirectory.from_config(self.alembic_cfg)
             head_rev = script_directory.get_current_head()
-            logger.trace(f"Head revision from scripts: {head_rev}")
+            logger.trace("Head revision from scripts: {}", head_rev)
             return head_rev or ""
         except (OSError, ValueError, RuntimeError, AttributeError) as e:
-            logger.error(f"Failed to get head revision: {str(e)}")
+            logger.error("Failed to get head revision: {}", str(e))
             return ""
 
     def needs_migration(self) -> bool:
@@ -132,9 +132,9 @@ class AlembicManager:
 
         needs_migration = current_rev != head_rev
         if needs_migration:
-            logger.info(f"Migration needed: current={current_rev}, head={head_rev}")
+            logger.info("Migration needed: current={}, head={}", current_rev, head_rev)
         else:
-            logger.info(f"Database up to date: {current_rev}")
+            logger.info("Database up to date: {}", current_rev)
 
         return needs_migration
 
@@ -163,12 +163,12 @@ class AlembicManager:
                     logger.info("Migration no longer needed (completed by another instance)")
                     return True
 
-                logger.info(f"Starting database migration to '{target}'")
+                logger.info("Starting database migration to '{}'", target)
                 alembic.command.upgrade(self.alembic_cfg, target)
-                logger.info(f"Database migration to '{target}' completed successfully")
+                logger.info("Database migration to '{}' completed successfully", target)
                 return True
         except (OSError, ValueError, RuntimeError, SQLAlchemyError) as e:
-            logger.error(f"Migration failed: {str(e)}")
+            logger.error("Migration failed: {}", str(e))
             return False
 
     def validate_schema_state(self) -> tuple[str, dict[str, Any], bool]:
@@ -232,5 +232,5 @@ class AlembicManager:
                     )
 
             except (OSError, ValueError, RuntimeError, AttributeError) as e:
-                logger.error(f"Error checking database schema: {str(e)}")
+                logger.error("Error checking database schema: {}", str(e))
                 return (f"Error checking database schema: {str(e)}", {"error": str(e), "type": type(e).__name__}, False)
