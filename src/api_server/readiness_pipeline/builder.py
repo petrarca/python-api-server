@@ -53,7 +53,7 @@ class ReadinessPipelineBuilder:
         """
         return self._stages_by_name.get(name)
 
-    def add_check_to_stage(self, stage_name: str, check: ReadinessCheck) -> "ReadinessPipelineBuilder":
+    def add_check_to_stage(self, stage_name: str, check: ReadinessCheck) -> ReadinessPipelineBuilder:
         """Add a check to an existing stage.
 
         Args:
@@ -99,7 +99,7 @@ class FluentReadinessPipelineBuilder:
         description: str,
         is_critical: bool = False,
         fail_fast: bool = True,
-    ) -> "FluentReadinessPipelineBuilder":
+    ) -> FluentReadinessPipelineBuilder:
         """Start a new pipeline stage.
 
         Args:
@@ -114,7 +114,7 @@ class FluentReadinessPipelineBuilder:
         self.current_stage = self.pipeline_builder.add_stage(name, description, is_critical, fail_fast)
         return self
 
-    def check(self, check: ReadinessCheck) -> "FluentReadinessPipelineBuilder":
+    def check(self, check: ReadinessCheck) -> FluentReadinessPipelineBuilder:
         """Add a check to the current stage.
 
         Args:
@@ -131,7 +131,7 @@ class FluentReadinessPipelineBuilder:
         self.current_stage.add_check(check)
         return self
 
-    def checks(self, checks: list[ReadinessCheck]) -> "FluentReadinessPipelineBuilder":
+    def checks(self, checks: list[ReadinessCheck]) -> FluentReadinessPipelineBuilder:
         """Add multiple checks to the current stage.
 
         Args:

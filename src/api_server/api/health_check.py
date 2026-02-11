@@ -8,7 +8,7 @@ This module provides the health check endpoint that:
 Used for monitoring, load balancers, and operational health checks.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from loguru import logger
 
 from api_server.services.health_check_service import HealthCheckResult, HealthCheckService, get_health_check_service
@@ -67,6 +67,7 @@ async def health_check(
 
 @router.post("/health-check", response_model=HealthCheckResult)
 async def trigger_health_check(
+    force_rerun: bool = Query(False, description="Force re-execution of run_once checks"),
     health_service: HealthCheckService = health_service_dependency,
 ) -> HealthCheckResult:
     """
@@ -84,6 +85,7 @@ async def trigger_health_check(
     - Forcing re-check of external dependencies
 
     Args:
+        force_rerun: If True, force re-execution of run_once checks
         health_service: Health check service (injected)
 
     Returns:
@@ -91,21 +93,15 @@ async def trigger_health_check(
 
     Example:
         POST /health-check
-        Returns: {
-            "status": "ok",
-            "server_state": "operational",
-            "active_profiles": ["GraphQL", "REST"],
-            "version_info": {...},
-            "checks": [...]
-        }
+        POST /health-check?force_rerun=true
 
     Note:
         - Executes all health checks (may take longer than GET)
         - Updates cached results for subsequent GET requests
-        - Checks with run_once=True will return cached results
-        - Checks with run_once=False will execute fresh
+        - Checks with run_once=True will return cached results unless force_rerun=True
+        - Checks with run_once=False will always execute fresh
     """
-    logger.info("Health check execution triggered via POST")
+    logger.info(f"Health check execution triggered via POST (force_rerun={force_rerun})")
 
     # Execute pipeline and return fresh results
-    return health_service.perform_health_check()
+    return health_service.perform_health_check(force_rerun=force_rerun)

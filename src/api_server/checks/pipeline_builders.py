@@ -4,6 +4,7 @@ This module provides functions to build common pipeline stages that can be
 reused across different applications.
 """
 
+from api_server.constants import STAGE_DATABASE
 from api_server.readiness_pipeline import ReadinessPipelineBuilder
 
 # Import essential checks only
@@ -28,7 +29,7 @@ def add_database_stage(builder: ReadinessPipelineBuilder) -> ReadinessPipelineBu
     """
     (
         builder.add_stage(
-            name="database",
+            name=STAGE_DATABASE,
             description="Database checks",
             is_critical=False,
             fail_fast=True,

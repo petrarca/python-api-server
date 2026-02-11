@@ -7,7 +7,6 @@ which API endpoints are enabled (REST, GraphQL).
 from functools import lru_cache
 
 from api_server.constants import PROFILE_GRAPHQL, PROFILE_REST
-from api_server.settings import get_settings
 
 
 class ProfileManager:
@@ -39,6 +38,9 @@ class ProfileManager:
         """
         if self._active_profiles is None:
             # Fallback: parse from settings if not yet initialized
+            # Lazy import to avoid circular imports as the codebase grows
+            from api_server.settings import get_settings
+
             settings = get_settings()
             return parse_profile(settings.profiles)
         return self._active_profiles

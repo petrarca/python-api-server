@@ -315,7 +315,7 @@ class EventBus:
                             service = registry.get(param.annotation)
                             kwargs[param.name] = service
                             logger.trace(f"Injected service '{param.annotation.__name__}' for handler {handler}")
-                    except (KeyError, AttributeError):
+                    except KeyError, AttributeError:
                         logger.trace(f"Service '{param.annotation}' not found in registry for handler {handler}")
 
             except ImportError:
@@ -365,7 +365,7 @@ class EventBus:
                             logger.trace(
                                 f"Injected service '{param.annotation.__name__}' into handler class {handler_class.__name__}"
                             )
-                    except (KeyError, AttributeError):
+                    except KeyError, AttributeError:
                         logger.trace(f"Service '{param.annotation}' not found for handler class {handler_class.__name__}")
 
             except ImportError:

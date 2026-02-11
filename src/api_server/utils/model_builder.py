@@ -24,7 +24,7 @@ class ModelBuilder:
         self.all_fields = True
         self.api_model = False
 
-    def with_name(self, name: str) -> "ModelBuilder":
+    def with_name(self, name: str) -> ModelBuilder:
         """Set the name for the model.
 
         Args:
@@ -36,7 +36,7 @@ class ModelBuilder:
         self.model_name = name
         return self
 
-    def include(self, fields: list[str]) -> "ModelBuilder":
+    def include(self, fields: list[str]) -> ModelBuilder:
         """Include only specified fields from the base model.
 
         Args:
@@ -49,7 +49,7 @@ class ModelBuilder:
         self.excluded_fields = None
         return self
 
-    def exclude(self, fields: list[str]) -> "ModelBuilder":
+    def exclude(self, fields: list[str]) -> ModelBuilder:
         """Exclude specified fields from the base model.
 
         Args:
@@ -62,7 +62,7 @@ class ModelBuilder:
         self.included_fields = None
         return self
 
-    def with_config(self, config: dict[str, Any]) -> "ModelBuilder":
+    def with_config(self, config: dict[str, Any]) -> ModelBuilder:
         """Set model configuration.
 
         Args:
@@ -74,7 +74,7 @@ class ModelBuilder:
         self.model_config = config
         return self
 
-    def with_all_fields(self, all_fields: bool) -> "ModelBuilder":
+    def with_all_fields(self, all_fields: bool) -> ModelBuilder:
         """Set whether to include all fields from the base model.
 
         Only relevant if neither include nor exclude is specified.
@@ -88,7 +88,7 @@ class ModelBuilder:
         self.all_fields = all_fields
         return self
 
-    def with_api_model(self, api_model: bool) -> "ModelBuilder":
+    def with_api_model(self, api_model: bool) -> ModelBuilder:
         """Set whether this is an API model.
 
         If true, will add {"extra": "forbid"} to the model config
@@ -103,7 +103,7 @@ class ModelBuilder:
         self.api_model = api_model
         return self
 
-    def override_field(self, field_name: str, annotation: Any, default: Any = ...) -> "ModelBuilder":
+    def override_field(self, field_name: str, annotation: Any, default: Any = ...) -> ModelBuilder:
         """Override a field's type and default value.
 
         Args:

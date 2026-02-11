@@ -9,14 +9,13 @@ authors = [
 ]
 description = "API server starter project"
 readme = "README.md"
-license = {text = "MIT"}
-requires-python = ">=3.13,<4.0"
+license = "MIT"
+requires-python = ">=3.14,<4.0"
 classifiers = [
     'Intended Audience :: Developers',
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.13',
-    "License :: OSI Approved :: MIT License",
+    'Programming Language :: Python :: 3.14',
 ]
 version = "0.1.0"
 dependencies = [
@@ -25,7 +24,7 @@ dependencies = [
     "typer>=0.9.0",
     "python-dotenv>=1.0.0",
     "loguru>=0.7.0",
-    "strawberry-graphql[fastapi]>=0.282.0",
+    "strawberry-graphql[fastapi]>=0.291.0",
     "jinja2>=3.1.0",
     "sqlmodel>=0.0.24",
     "sqlalchemy>=2.0.27",
@@ -49,23 +48,25 @@ watch = [
     "watchfiles>=0.19.0",
 ]
 
-[tool.setuptools]
-packages = ["api_server"]
+[tool.setuptools.packages.find]
+where = ["src"]
 
-[tool.setuptools.package-dir]
-"api_server" = "src/api_server"
+[tool.setuptools.package-data]
+api_server = ["home/*.html", "templates/*.html"]
 
 [project.scripts]
 api-server = "api_server.main:app"
+api-server-cli = "api_server.cli.__main__:main"
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py314"
 extend-exclude = ["src/api_server/__version__.py"]
 line-length = 130
 
 [tool.ruff.lint]
 ignore = [
     "B008",  # Function call in argument defaults (false positive for Typer)
+    "UP046", # Generic class uses Generic subclass (false positive with modern Python generics)
 ]
 select = [
     "E",  # pycodestyle errors

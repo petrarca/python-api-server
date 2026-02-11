@@ -60,11 +60,6 @@ tasks:
       - uv pip install --python .venv/bin/python build
       - .venv/bin/python -m build
 
-  db:setup:
-    desc: Setup the database and run all migrations
-    cmds:
-      - .venv/bin/alembic upgrade head
-
   db:migrate:
     desc: Generate a new migration
     cmds:
@@ -83,13 +78,19 @@ tasks:
   db:reset:
     desc: Reset the database (WARNING - This will delete all data)
     cmds:
-      - task: db:setup
+      - task: db:upgrade
 
   run:
     desc: Run the application
     dotenv: ['.env']
     cmds:
       - .venv/bin/python -m {{.MODULE_NAME}} {{.CLI_ARGS}}
+
+  run:cli:
+    desc: Run the admin CLI (e.g. task run:cli -- db check)
+    dotenv: ['.env']
+    cmds:
+      - .venv/bin/python -m api_server.cli {{.CLI_ARGS}}
 
   fct:
     desc: Format, check, test

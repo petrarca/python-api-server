@@ -113,7 +113,7 @@ def _create_session() -> Session:
 
 
 @contextmanager
-def borrow_db_session() -> Generator[Session, None, None]:
+def borrow_db_session() -> Generator[Session]:
     """Public context manager for ad-hoc database usage.
 
     Creates a database session with retry logic and yields it to the caller.

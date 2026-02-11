@@ -36,6 +36,16 @@ def setup_logging(log_level: str):
 
     # Configure loguru
     logger.remove()  # Remove default handler
+
+    # Custom format with timestamps and source location (uncomment for richer logs):
+    # log_format = (
+    #     "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+    #     "<level>{level: <8}</level> | "
+    #     "<cyan>{module}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+    #     "<level>{message}</level>"
+    # )
+    # logger.add(sys.stderr, level=log_level, colorize=True, format=log_format)
+
     logger.add(
         sys.stderr,
         level=log_level,
@@ -59,6 +69,11 @@ def setup_logging(log_level: str):
     stdlib_log_level = "DEBUG" if log_level == "TRACE" else log_level
     for noisy_logger in ("httpcore", "httpx", "openai", "urllib3", "asyncio", "api_server"):
         logging.getLogger(noisy_logger).setLevel(stdlib_log_level)
+
+    # Suppress overly verbose third-party loggers (always WARNING regardless of app level)
+    # Add library names here that flood logs even at INFO level
+    for verbose_logger in ("watchfiles",):
+        logging.getLogger(verbose_logger).setLevel("WARNING")
 
 
 def setup_sqlalchemy_logging():

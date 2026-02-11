@@ -94,7 +94,7 @@ class ReadinessStage:
         self._check_executor = CheckExecutor()
         self._result_processor = ResultProcessor()
 
-    def add_check(self, check: ReadinessCheck) -> "ReadinessStage":
+    def add_check(self, check: ReadinessCheck) -> ReadinessStage:
         """Add a check to this readiness pipeline stage (fluent interface).
 
         Args:
@@ -106,7 +106,7 @@ class ReadinessStage:
         self.checks.append(check)
         return self
 
-    def add_checks(self, checks: list[ReadinessCheck]) -> "ReadinessStage":
+    def add_checks(self, checks: list[ReadinessCheck]) -> ReadinessStage:
         """Add multiple checks to this readiness pipeline stage.
 
         Args:

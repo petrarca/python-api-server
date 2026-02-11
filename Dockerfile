@@ -1,6 +1,6 @@
 # Multi-stage build for api-server
 # Stage 1: Build the package
-FROM python:3.13 AS builder
+FROM python:3.14 AS builder
 
 WORKDIR /app
 
@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir build
 RUN python -m build
 
 # Stage 2: Runtime image
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 LABEL org.opencontainers.image.title="api-server"
 

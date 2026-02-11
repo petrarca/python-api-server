@@ -8,7 +8,7 @@ and ready to operate. It performs checks in a specific order:
 """
 
 import os
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import alembic.config
@@ -22,7 +22,7 @@ from sqlmodel import Session
 from api_server.database import is_healthy
 
 
-class ServerState(str, Enum):
+class ServerState(StrEnum):
     """Enum representing the possible states of the server."""
 
     STARTING = "starting"

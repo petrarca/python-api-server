@@ -4,10 +4,11 @@ import typer
 import uvicorn
 from loguru import logger
 
+from api_server.cli import app as cli_app
 from api_server.logging import setup_logging
 from api_server.settings import get_settings
 
-app = typer.Typer()
+app = typer.Typer(invoke_without_command=True)
 
 
 HOST_OPTION = typer.Option(
@@ -46,12 +47,6 @@ PROFILE_OPTION = typer.Option(
     help="Server profile: rest, graphql, or combination (e.g., 'rest,graphql'). Omit for all.",
     metavar="<profile>",
 )  # fmt: skip
-CHECK_ONLY_OPTION = typer.Option(
-    None,
-    "--check-only",
-    help="Run readiness checks only, then exit (without starting server)",
-    flag_value=True,
-)  # fmt: skip
 
 
 def _update_settings(
@@ -76,13 +71,17 @@ def _update_settings(
     """
     settings = get_settings()
 
-    # Apply overrides
     if host is not None:
         settings.host = host
     if port is not None:
         settings.port = port
     if log_level is not None:
-        settings.log_level = log_level
+        # Validate log level
+        log_level_upper = log_level.upper()
+        allowed = {"TRACE", "DEBUG", "INFO", "WARNING", "ERROR"}
+        if log_level_upper not in allowed:
+            raise ValueError(f"Invalid log level: {log_level}. Must be one of: {', '.join(sorted(allowed))}")
+        settings.log_level = log_level_upper  # type: ignore[assignment]
     if reload is not None:
         settings.reload = reload
     if sql_log is not None:
@@ -91,6 +90,91 @@ def _update_settings(
         settings.database_url = database_url
     if profiles is not None:
         settings.profiles = profiles
+
+
+def _prepare_and_log_settings(
+    host: str | None,
+    port: int | None,
+    log_level: str | None,
+    reload: bool | None,
+    sql_log: bool | None,
+    database_url: str | None,
+    profile: str | None,
+) -> None:
+    """Prepare settings and log startup information."""
+    _update_settings(host, port, log_level, reload, sql_log, database_url, profile)
+
+    # Set up logging immediately after settings are updated
+    settings = get_settings()
+    setup_logging(settings.log_level)
+
+    logger.info(f"Log level: {settings.log_level}")
+
+    if settings.log_level in {"DEBUG", "TRACE"}:
+        logger.debug(f"Effective settings: {settings.model_dump()}")
+
+
+def _run_server(
+    host: str | None,
+    port: int | None,
+    log_level: str | None,
+    reload: bool | None,
+    sql_log: bool | None,
+    database_url: str | None,
+    profile: str | None,
+) -> None:
+    """Start the uvicorn server."""
+    _prepare_and_log_settings(host, port, log_level, reload, sql_log, database_url, profile)
+
+    settings = get_settings()
+    logger.info(f"Starting API server at http://{settings.host}:{settings.port}")
+
+    uvicorn.run(
+        "api_server.app:app",
+        host=settings.host,
+        port=settings.port,
+        reload=settings.reload,
+        log_level=str(settings.log_level).lower(),
+    )
+
+
+def _run_checks(
+    host: str | None,
+    port: int | None,
+    log_level: str | None,
+    sql_log: bool | None,
+    database_url: str | None,
+    profile: str | None,
+) -> None:
+    """Run readiness checks only."""
+    _prepare_and_log_settings(host, port, log_level, False, sql_log, database_url, profile)
+
+    settings = get_settings()
+    logger.info("Running readiness checks only - server will not start")
+
+    import asyncio
+
+    from api_server.app import perform_startup_checks
+
+    asyncio.run(perform_startup_checks(settings))
+    logger.info("Readiness checks completed successfully - exiting")
+
+
+@app.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context,
+    host: str = HOST_OPTION,
+    port: int = PORT_OPTION,
+    log_level: str = LOG_LEVEL_OPTION,
+    reload: bool = RELOAD_OPTION,
+    sql_log: bool = SQL_LOG_OPTION,
+    database_url: str = DATABASE_URL_OPTION,
+    profile: str = PROFILE_OPTION,
+) -> None:
+    """API Server - Default: run the server."""
+    if ctx.invoked_subcommand is None:
+        # No subcommand specified, run the server (default behavior)
+        _run_server(host, port, log_level, reload, sql_log, database_url, profile)
 
 
 @app.command()
@@ -103,39 +187,8 @@ def run(
     database_url: str = DATABASE_URL_OPTION,
     profile: str = PROFILE_OPTION,
 ) -> None:
-    """Run the API server."""
-    # Update settings with CLI overrides
-    _update_settings(host, port, log_level, reload, sql_log, database_url, profile)
-
-    # Get final settings
-    settings = get_settings()
-
-    # Setup logging
-    setup_logging(settings.log_level)
-
-    logger.info(f"Starting API server on {settings.host}:{settings.port}")
-    logger.info(f"Profile: {settings.profiles or 'all'}")
-    logger.info(f"Reload: {settings.reload}")
-
-    # Run the app - use import string for reload mode
-    if settings.reload:
-        uvicorn.run(
-            "api_server.app:app",
-            host=settings.host,
-            port=settings.port,
-            reload=True,
-            log_level=settings.log_level.lower(),
-        )
-    else:
-        from api_server.app import app as fastapi_app
-
-        uvicorn.run(
-            fastapi_app,
-            host=settings.host,
-            port=settings.port,
-            reload=False,
-            log_level=settings.log_level.lower(),
-        )
+    """Run the server."""
+    _run_server(host, port, log_level, reload, sql_log, database_url, profile)
 
 
 @app.command()
@@ -147,32 +200,12 @@ def check(
     database_url: str = DATABASE_URL_OPTION,
     profile: str = PROFILE_OPTION,
 ) -> None:
-    """Run readiness checks only."""
-    # Update settings with CLI overrides
-    _update_settings(host, port, log_level, False, sql_log, database_url, profile)
-
-    # Get final settings
-    settings = get_settings()
-
-    # Setup logging
-    setup_logging(settings.log_level)
-
-    logger.info("Running readiness checks only")
-
-    # Import and run checks
-    import asyncio
-
-    from api_server.app import perform_startup_checks
-
-    try:
-        asyncio.run(perform_startup_checks(settings))
-        logger.info("Readiness checks completed successfully")
-    except SystemExit:
-        raise
-    except Exception as e:
-        logger.error(f"Readiness checks failed: {e}")
-        raise SystemExit(1) from None
+    """Run readiness checks only, then exit (without starting server)."""
+    _run_checks(host, port, log_level, sql_log, database_url, profile)
 
 
-if __name__ == "__main__":
+app.add_typer(cli_app, name="cli", invoke_without_command=True)
+
+
+if __name__ == "__main__":  # pragma: no cover
     app()

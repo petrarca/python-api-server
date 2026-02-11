@@ -14,6 +14,7 @@ from loguru import logger
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 
+from .advisory_lock import AdvisoryLock, advisory_lock
 from .connection import borrow_db_session
 
 
@@ -74,6 +75,12 @@ class AlembicManager:
 
         with borrow_db_session() as session:
             try:
+                # Check if alembic_version table exists before querying
+                inspector = inspect(session.bind)
+                if "alembic_version" not in inspector.get_table_names():
+                    logger.debug("alembic_version table does not exist yet")
+                    return None
+
                 result = session.exec(text("SELECT version_num FROM alembic_version LIMIT 1"))
                 current_rev = result.one_or_none()
 
@@ -86,6 +93,8 @@ class AlembicManager:
                         current_rev = current_rev.version_num
                     elif hasattr(current_rev, "_mapping"):
                         current_rev = current_rev._mapping.get("version_num")
+                    else:
+                        current_rev = str(current_rev)
 
                 logger.trace(f"Current database revision: {current_rev}")
                 return current_rev
@@ -132,6 +141,11 @@ class AlembicManager:
     def perform_migration(self, target: str = "head") -> bool:
         """Execute database migration to specified target.
 
+        Uses a PostgreSQL advisory lock to ensure only one process can run
+        migrations at a time (safe for multi-instance deployments).
+        Re-checks whether migration is still needed after acquiring the lock
+        (double-checked locking pattern).
+
         Args:
             target: Migration target (default: "head")
 
@@ -143,10 +157,16 @@ class AlembicManager:
             return False
 
         try:
-            logger.info(f"Starting database migration to '{target}'")
-            alembic.command.upgrade(self.alembic_cfg, target)
-            logger.info(f"Database migration to '{target}' completed successfully")
-            return True
+            with advisory_lock(AdvisoryLock.MIGRATION):
+                # Double-check: another instance may have migrated while we waited for the lock
+                if not self.needs_migration():
+                    logger.info("Migration no longer needed (completed by another instance)")
+                    return True
+
+                logger.info(f"Starting database migration to '{target}'")
+                alembic.command.upgrade(self.alembic_cfg, target)
+                logger.info(f"Database migration to '{target}' completed successfully")
+                return True
         except (OSError, ValueError, RuntimeError, SQLAlchemyError) as e:
             logger.error(f"Migration failed: {str(e)}")
             return False
