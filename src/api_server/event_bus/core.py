@@ -72,12 +72,12 @@ class EventHandler[T_Event: BaseModel](ABC):
             by the event bus and included in the results list.
         """
 
-    def __call__(self, event: T_Event) -> Any:
+    async def __call__(self, event: T_Event) -> Any:
         """Make the handler callable.
 
         This allows handler instances to be used directly with the event bus.
         """
-        return self.handle(event)
+        return await self.handle(event)
 
 
 class EventBusError(Exception):

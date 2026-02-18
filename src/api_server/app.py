@@ -1,6 +1,5 @@
 """Main FastAPI application module."""
 
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -53,27 +52,19 @@ def _log_server_endpoints_summary(settings: Settings, active_profiles: set[str])
         settings: Application settings containing host and port
         active_profiles: Set of active profile names
     """
-    # Log the main server URL
     server_url = f"http://{settings.host}:{settings.port}"
     logger.info("Server running at: {}", server_url)
 
-    # Collect all available endpoints
-    endpoints = []
+    endpoints = [
+        ("Home", "/"),
+        ("Health Check", "/health-check"),
+        ("Ping", "/ping"),
+        ("Version", "/version"),
+        ("OpenAPI Schema", "/openapi.json"),
+        ("API Docs", "/docs"),
+        ("ReDoc", "/redoc"),
+    ]
 
-    # System endpoints - always available
-    endpoints.extend(
-        [
-            ("Home", "/"),
-            ("Health Check", "/health-check"),
-            ("Ping", "/ping"),
-            ("Version", "/version"),
-            ("OpenAPI Schema", "/openapi.json"),
-            ("API Docs", "/docs"),
-            ("ReDoc", "/redoc"),
-        ]
-    )
-
-    # Profile-based endpoints
     if PROFILE_REST in active_profiles:
         endpoints.append(("REST API", "/api"))
 
@@ -81,15 +72,11 @@ def _log_server_endpoints_summary(settings: Settings, active_profiles: set[str])
         endpoints.append(("GraphQL", "/graphql"))
         endpoints.append(("GraphQL Playground", "/graphql/playground"))
 
-    # Log endpoints summary
     logger.info("Available endpoints:")
     for name, path in endpoints:
-        full_url = f"{server_url}{path}"
-        logger.info("   {}: {}", name, full_url)
+        logger.info("   {}: {}", name, f"{server_url}{path}")
 
-    # Log active profiles
-    profile_display = ", ".join(sorted(active_profiles))
-    logger.info("Active profiles: {}", profile_display)
+    logger.info("Active profiles: {}", ", ".join(sorted(active_profiles)))
 
 
 async def perform_startup_checks(app_settings: Settings) -> None:
@@ -104,66 +91,59 @@ async def perform_startup_checks(app_settings: Settings) -> None:
     Raises:
         SystemExit: If readiness checks fail
     """
-    # Parse and store active profile in app state (parse once, reuse throughout)
     active_profile = parse_profile(app_settings.profiles)
-
-    # Set active profiles globally for access throughout the app
     set_active_profiles(active_profile)
 
-    # Configure logging on startup with log level from settings
     setup_logging(log_level=app_settings.log_level)
     setup_sqlalchemy_logging()
 
-    # Register services in the service registry
     logger.info("Registering services in the service registry")
     registry = get_service_registry()
-    # Register all services using shared DI module
     register_all_services(registry)
 
-    # Log startup message
     logger.info("API server performing startup checks")
-
-    # Run server readiness checks
     health_result = get_health_check_service().perform_health_check()
-
-    # Use pipeline's server state determination - only exit on critical failures
     _log_startup_check_results(health_result)
 
 
 @asynccontextmanager
 async def app_lifespan(_app: FastAPI):
     """Handle startup and shutdown events for the main application."""
-    # Load settings and attach to app state (so dependencies can access)
     settings = get_settings()
     _app.state.settings = settings  # type: ignore[attr-defined]
 
-    # Initialize ServiceRegistry and register event handlers
     from api_server.events import register_event_handlers
-    from api_server.services.di import register_all_services
-    from api_server.services.registry import get_service_registry
 
     registry = get_service_registry()
     register_all_services(registry)
     register_event_handlers()
 
-    # Perform startup checks (same logic as check-only mode)
     await perform_startup_checks(settings)
 
-    # Log comprehensive server URL and endpoints summary
-    _log_server_endpoints_summary(settings, parse_profile(settings.profiles))
+    active_profiles = parse_profile(settings.profiles)
+    _app.state.active_profiles = active_profiles  # type: ignore[attr-defined]
 
-    # Store active profile in app state for runtime access
-    _app.state.active_profile = parse_profile(settings.profiles)  # type: ignore[attr-defined]
+    # Mount profile-dependent routers now that settings are fully resolved
+    if PROFILE_REST in active_profiles:
+        _app.include_router(api_router, prefix="/api")
+
+    if PROFILE_GRAPHQL in active_profiles:
+        from api_server.graphql.graphql_router import create_graphql_router
+
+        _app.include_router(create_graphql_router(), prefix="/graphql")
+
+    # Initialise templates and store on app state for use by route handlers
+    import os
+
+    template_dir = os.path.join(os.path.dirname(__file__), "home")
+    _app.state.templates = Jinja2Templates(directory=template_dir)  # type: ignore[attr-defined]
+
+    _log_server_endpoints_summary(settings, active_profiles)
 
     yield
 
-    # Log shutdown message
     logger.info("API server shutting down")
-
-    # Shutdown event bus
     get_event_bus().shutdown()
-
-    # Dispose database connections
     dispose_db()
 
 
@@ -184,70 +164,41 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-# Get settings and parse profile configuration once (parse once, reuse throughout)
-global_settings = get_settings()
-profile = parse_profile(global_settings.profiles)
-
-# Initialize home page templates
-template_dir = os.path.join(os.path.dirname(__file__), "home")
-templates = Jinja2Templates(directory=template_dir)
-
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Register exception handlers
 register_exception_handlers(app)
 
-# System endpoints - always enabled
+# System endpoints — always enabled, profile-independent
 app.include_router(health_router, prefix="")
 app.include_router(ping_router, prefix="")
 app.include_router(version_router, prefix="/version")
 
 
-# Profile-based endpoints
-if PROFILE_REST in profile:
-    app.include_router(api_router, prefix="/api")
-
-if PROFILE_GRAPHQL in profile:
-    from api_server.graphql.graphql_router import create_graphql_router
-
-    graphql_router = create_graphql_router()
-    app.include_router(graphql_router, prefix="/graphql")
-
-
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Serve the index template at root."""
-    # Get the current server state
     health_service = get_health_check_service()
     server_state = health_service.get_server_state().value
 
-    # Extract build timestamp from version if available
     version_info = get_version()
-    build_timestamp = version_info.build_timestamp
-
-    # Get active profiles from app state
     active_profile = get_active_profiles()
-
-    # Display profile: show the active profiles as comma-separated list
-    active_profile_display = ", ".join(sorted(active_profile))
 
     context = {
         "request": request,
         "version": version_info.version,
         "full_version": version_info.full_version,
         "server_state": server_state,
-        "build_timestamp": build_timestamp,
+        "build_timestamp": version_info.build_timestamp,
         "profile": active_profile,
-        "profile_display": active_profile_display,
+        "profile_display": ", ".join(sorted(active_profile)),
     }
-    return templates.TemplateResponse(request, "index.html", context)
+    return request.app.state.templates.TemplateResponse(request, "index.html", context)
 
 
 def get_app_settings() -> Settings:

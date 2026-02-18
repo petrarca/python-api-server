@@ -2,6 +2,7 @@
 
 from loguru import logger
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import SQLAlchemyError
 
 from api_server.database import borrow_db_session
 from api_server.readiness_pipeline import ReadinessCheck, ReadinessCheckResult
@@ -53,6 +54,6 @@ class AlembicSetupCheck(ReadinessCheck):
                 else:
                     msg = "Database is not set up with alembic (table not found)"
                     return self.failed(msg, {"has_alembic_table": False})
-        except Exception as e:
+        except (SQLAlchemyError, OSError, ValueError, RuntimeError) as e:
             logger.error("Error checking alembic setup: {}", str(e))
             return self.failed(f"Error checking alembic setup: {str(e)}", {"error": str(e), "type": type(e).__name__})

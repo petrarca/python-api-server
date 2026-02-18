@@ -1,6 +1,6 @@
 """Utility functions for generating IDs."""
 
-import random
+import secrets
 import string
 import time
 
@@ -24,7 +24,7 @@ def generate_short_id(length: int = 16) -> str:
 
     # Generate random string for remaining characters
     random_chars = string.ascii_letters + string.digits
-    random_part = "".join(random.choice(random_chars) for _ in range(length))
+    random_part = "".join(secrets.choice(random_chars) for _ in range(length))
 
     # Combine and ensure exactly the specified length
     return (timestamp + random_part)[:length].ljust(length, "0")

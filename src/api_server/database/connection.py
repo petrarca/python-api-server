@@ -10,6 +10,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 
 from loguru import logger
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlmodel import Session, create_engine, text
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -80,7 +81,7 @@ def dispose_db() -> None:
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=1, max=10),
     reraise=True,
-    retry=retry_if_exception_type(Exception),
+    retry=retry_if_exception_type((SQLAlchemyError, OperationalError)),
     before_sleep=before_sleep_log(logger, "DEBUG"),
 )
 def _create_session() -> Session:
@@ -102,7 +103,7 @@ def _create_session() -> Session:
         # Test the connection immediately
         session.execute(text("SELECT 1"))
         return session
-    except Exception as e:
+    except (SQLAlchemyError, OperationalError) as e:
         # Connection failed - dispose engine so it can be recreated on retry
         if _engine is not None:
             logger.warning("Database connection failed, disposing engine for retry...")
@@ -143,7 +144,7 @@ def borrow_db_session() -> Generator[Session]:
         logger.trace("Database session {} closed and resources released", session_id)
 
 
-def get_db_session() -> Session:
+def get_db_session() -> Generator[Session]:
     """FastAPI dependency yielding a database session.
 
     Usage in route:

@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from api_server.checks import get_readiness_pipeline
 from api_server.profile import get_active_profiles
-from api_server.readiness_pipeline import CheckStatus, ReadinessCheckResult, ServerState
+from api_server.readiness_pipeline import ReadinessCheckResult, ServerState
 from api_server.utils.version import get_version
 
 
@@ -86,7 +86,7 @@ class HealthCheckService:
 
         try:
             return self._run_self_checks(force_rerun=force_rerun)
-        except Exception as e:  # pragma: no cover - defensive path
+        except (RuntimeError, OSError, ValueError) as e:  # pragma: no cover - defensive path
             logger.warning("Health check failed: {}", e)
             return HealthCheckResult(status="error", server_state=ServerState.ERROR, version_info={}, checks=[])
 
@@ -106,7 +106,7 @@ class HealthCheckService:
             result = self._pipeline.execute(force_rerun=force_rerun)
             return self._to_health_check_response(result)
 
-        except Exception as e:  # pragma: no cover - defensive
+        except (RuntimeError, OSError, ValueError) as e:  # pragma: no cover - defensive
             logger.error("Error running server readiness checks: {}", e)
             return self._health_check_failed()
 
@@ -138,17 +138,8 @@ class HealthCheckService:
         for stage_result in pipeline_result.stage_results:
             all_check_results.extend(stage_result.check_results)
 
-        # Get the first check (GraphDB) for backward compatibility
-        cdb_check = all_check_results[0] if all_check_results else None
-        if cdb_check is None:
-            server_state = ServerState.ERROR
-
-        # Determine status based on overall success and critical checks
-        status = (
-            "ok"
-            if (server_state == ServerState.OPERATIONAL and cdb_check is not None and cdb_check.status == CheckStatus.SUCCESS)
-            else "error"
-        )
+        # Derive status directly from the pipeline computed server state
+        status = "ok" if server_state == ServerState.OPERATIONAL else "error"
 
         # Get version information
         version_info = get_version().model_dump()

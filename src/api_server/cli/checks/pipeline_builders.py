@@ -8,7 +8,7 @@ may need different check combinations (e.g., no auto-migration, basic checks onl
 from api_server.checks.database_health_check import DatabaseHealthCheck
 from api_server.checks.database_initialization import DatabaseInitializationCheck
 from api_server.checks.database_schema_check import DatabaseSchemaCheck
-from api_server.constants import STAGE_DATABASE
+from api_server.constants import STAGE_DATABASE, STAGE_DB_SCHEMA
 from api_server.readiness_pipeline import ReadinessPipelineBuilder
 
 
@@ -68,7 +68,7 @@ def build_db_check_pipeline():
     # Add schema validation check in a separate stage (no migrations)
     (
         builder.add_stage(
-            name="db_schema",
+            name=STAGE_DB_SCHEMA,
             description="Database schema validation",
             is_critical=False,
             fail_fast=True,

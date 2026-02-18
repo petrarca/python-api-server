@@ -2,6 +2,7 @@
 
 from loguru import logger
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import text
 
 from api_server.database import borrow_db_session
@@ -69,7 +70,7 @@ class DatabaseHealthCheck(ReadinessCheck):
                     db_health.model_dump(),
                 )
 
-        except Exception as e:
+        except (SQLAlchemyError, OSError, RuntimeError) as e:
             logger.error("Error checking operational database connection: {}", str(e))
             db_health = DatabaseHealth(error=str(e), connection="failed")
             return self.failed(

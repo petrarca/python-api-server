@@ -10,6 +10,7 @@ PROFILE_GRAPHQL = "graphql"
 
 # Readiness pipeline stage names
 STAGE_DATABASE = "database"
+STAGE_DB_SCHEMA = "db_schema"
 
 # Future stage constants (uncomment as needed):
 # STAGE_CACHE = "cache"

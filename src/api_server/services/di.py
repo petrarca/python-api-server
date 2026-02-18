@@ -10,7 +10,6 @@ from api_server.services.address_service import AddressService, get_address_serv
 from api_server.services.health_check_service import HealthCheckService, get_health_check_service
 from api_server.services.patient_service import PatientService, get_patient_service
 from api_server.services.registry import ServiceRegistry
-from api_server.types import DbSessionFactory
 
 
 def register_core_services(registry: ServiceRegistry) -> None:
@@ -27,11 +26,6 @@ def register_core_services(registry: ServiceRegistry) -> None:
 
     # Register core service factories
     registry.register_factory(HealthCheckService, get_health_check_service)
-
-    # Register database session factory for event handlers
-    from api_server.database import borrow_db_session
-
-    registry.register_factory(DbSessionFactory, lambda: borrow_db_session)
 
 
 def register_app_services(registry: ServiceRegistry) -> None:
