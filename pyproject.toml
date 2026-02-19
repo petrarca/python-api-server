@@ -52,7 +52,7 @@ watch = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-api_server = ["home/*.html", "templates/*.html"]
+api_server = ["home/*.html"]
 
 [project.scripts]
 api-server = "api_server.main:app"
