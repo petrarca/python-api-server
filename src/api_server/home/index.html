@@ -132,10 +132,10 @@
             <span class="word-server">API Server</span>
         </div>
         <div class="links">
-            {% if 'GraphQL' in profile %}
+            <a href="/docs">/OpenAPI-Documentation</a>
+            {% if 'graphql' in profile %}
             <a href="/graphql">/GraphQL</a>
             {% endif %}
-            <a href="/docs">/OpenAPI-Documentation</a>
         </div>
         <div class="status">
             <span class="status-indicator status-{{ server_state }}"></span>
