@@ -69,8 +69,7 @@ def _log_server_endpoints_summary(settings: Settings, active_profiles: set[str])
         endpoints.append(("REST API", "/api"))
 
     if PROFILE_GRAPHQL in active_profiles:
-        endpoints.append(("GraphQL", "/graphql"))
-        endpoints.append(("GraphQL Playground", "/graphql/playground"))
+        endpoints.append(("GraphQL / GraphiQL", "/graphql"))
 
     logger.info("Available endpoints:")
     for name, path in endpoints:
